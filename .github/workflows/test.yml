@@ -13,9 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # .python-version 에 기대지 않고 워크플로에서 고정한다. README 배지가 3.11 이다.
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+          python-version: "3.11"
 
       # uv.lock 그대로 설치한다. 테스트는 LLM·웹 검색·임베딩·원문(data/raw/)을
       # 전부 fixture 로 막으므로 API 키가 필요 없다.

@@ -8,6 +8,7 @@ R4 의 Assessment → R1 의 병합 → R5 의 종합·검토·보고서·제출
 `scripts/r3_smoke.py` 가 따로 검증한다.
 """
 
+import hashlib
 import json
 
 import pytest
@@ -112,8 +113,13 @@ def wired(monkeypatch, tmp_path):
     monkeypatch.setattr(synthesis_module, "get_llm", lambda: FakeSynthesis())
     monkeypatch.setattr(report_module, "model_name", lambda: "test-model")
     monkeypatch.setattr("src.rag.index.build", lambda: {"manifest": [{"id": "turboquant-paper"}]})
-    # 원문(data/raw/)은 저작권 문제로 커밋하지 않는다. 해시 대조 자체는 test_r1_graph 가 따로 본다.
-    monkeypatch.setattr("src.graph.verify_corpus", lambda manifest: [])
+    # 원문(data/raw/)은 저작권 문제로 커밋하지 않는다. 대신 tmp 원문과 해시가 맞는 매니페스트를
+    # 넣어 setup → verify_corpus 연결을 실물로 탄다.
+    raw = tmp_path / "raw.txt"
+    raw.write_bytes(b"fixture source")
+    manifest = {"sources": [{"id": "turboquant-paper", "local_path": str(raw),
+                             "sha256": hashlib.sha256(raw.read_bytes()).hexdigest()}]}
+    monkeypatch.setattr("src.rag.index.load_manifest", lambda: manifest)
     monkeypatch.setattr(pdf, "render_pdf",
                         lambda md, out: (out.parent.mkdir(parents=True, exist_ok=True),
                                          out.write_bytes(b"%PDF fixture")))
@@ -128,6 +134,13 @@ def wired(monkeypatch, tmp_path):
         return invoke(graph, initial), tmp_path / initial["run_id"]
 
     return run
+
+
+def test_setup_stops_on_corpus_hash_mismatch(wired, tmp_path):
+    """원문이 매니페스트와 다르면 setup 에서 실행이 멈춘다(§3)."""
+    (tmp_path / "raw.txt").write_bytes(b"changed source")
+    with pytest.raises(ValueError, match="매니페스트와 다르다"):
+        wired()
 
 
 def test_pipeline_stops_for_human_review(wired):

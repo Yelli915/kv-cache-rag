@@ -21,6 +21,7 @@ dependencies = [
     "lxml>=5.2",                    # bs4 파서
     "pyyaml>=6",
     "transformers>=4.57",        # 토큰 기준 청킹용 토크나이저
+    "torch>=2.4",                # sentence-transformers 가 끌고 온다. Linux 는 CPU 휠로 고정(아래)
     "python-dotenv>=1.2.1",
 ]
 
@@ -32,6 +33,16 @@ pdf = ["markdown>=3.6", "weasyprint>=62"]
 
 [tool.uv]
 package = false
+
+# Linux 기본 torch 휠은 CUDA 라이브러리 수 GB 를 끌고 온다. e5-small 은 CPU 로 충분하고
+# CI(ubuntu)는 임베딩을 쓰지도 않는다. macOS 는 PyPI 휠이 원래 CPU 라 그대로 둔다.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = [

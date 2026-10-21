@@ -243,7 +243,7 @@ PDF 는 **검증을 통과했을 때만** 나온다(§8 — 무효 인용이 남
 
 ```bash
 uv sync
-uv run pytest -q          # 162 passed — API 키·원문(data/raw/) 없이 돈다
+uv run pytest -q          # API 키·원문(data/raw/) 없이 돈다
 ```
 
 LLM·웹 검색·임베딩 색인·원문 해시 대조를 fixture 로 막고 계약만 본다. 푸시와 PR 마다
@@ -251,10 +251,10 @@ GitHub Actions 가 같은 명령을 돌린다([.github/workflows/test.yml](.gith
 
 | 층 | 파일 | 보는 것 |
 |---|---|---|
-| 단위 | `test_r1_*` ~ `test_r5_*` | 역할별 노드·검색·인용 검증·검토·제출본 |
+| 단위 | `test_r1_*` · `test_r3_*` ~ `test_r5_*` | 역할별 노드·검색·인용 검증·검토·제출본. R2(청킹·색인)는 단위 테스트가 없고 통합 테스트도 색인을 stub 한다 |
 | 통합 | `test_integration_graph.py` | 실물 노드로 그래프를 끝까지 돌려 R1~R5 계약이 맞물리는지 (`stakeholder` 만 stub) |
 
-통합 테스트를 따로 둔 이유: 역할별 코드가 모두 main 에 들어오고 단위 테스트 82개가
+통합 테스트를 따로 둔 이유: 역할별 코드가 모두 main 에 들어오고 단위 테스트가 전부
 통과했는데도 **파이프라인은 한 번도 끝까지 돈 적이 없었다.** 각 테스트가 손으로 만든
 state 로 자기 함수만 불렀기 때문이다. 그중 검증 결과가 State 에 실리지 않아
 `final_check` 가 무효 인용을 못 보고 `completed` 로 끝나는 버그는 죽지 않고 조용히
