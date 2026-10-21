@@ -11,8 +11,9 @@ papers_core 를 조회하면 의미적으로 가까운 기술 서술이 시장 �
 import re
 from datetime import datetime, timezone
 
-from src.agents.common import run_node
-from src.schema import Assessment, Claim, Evidence, Gap, Source
+from src.agents.common import NUMBER_FEEDBACK, number_problems, register, run_node
+from src.output.validate import CITATION_RE, describe
+from src.schema import Assessment, Claim, Gap
 from src.tools.docs import format_chunks
 from src.tools.docs import bind_document_search
 
@@ -40,7 +41,6 @@ QUERIES = [
     ("서빙 프레임워크 지원 현황 표준화 동향", "both"),
 ]
 SECTION_RE = re.compile(r"^##\s*([①②③])\s*(.*)$", re.MULTILINE)
-CITATION_RE = re.compile(r"\[([0-9a-f]{12})\]")
 SECTION_LABELS = {"①": "시장 규모/성장성", "②": "상용화/채택 현황", "③": "생태계 지지"}
 
 
@@ -93,26 +93,20 @@ def market(state) -> dict:
                 "trace": [{"node": "market", "status": "failed", "attempt": 1,
                            "timestamp": datetime.now(timezone.utc).isoformat(), "chunks": 0}]}
 
-    text = run_node(INSTRUCTION, domain, format_chunks(chunks))
+    context = format_chunks(chunks)
+    text = run_node(INSTRUCTION, domain, context)
+    # 다른 평가 노드와 같은 수치 검사·1회 재작성(부록 A). 없으면 review 검증에서 바로 실패한다.
+    problems, attempt = number_problems([(text, "both")], by_id), 1
+    if problems:
+        text = run_node(INSTRUCTION + NUMBER_FEEDBACK + describe(problems), domain, context)
+        problems, attempt = number_problems([(text, "both")], by_id), 2
 
     found = CITATION_RE.findall(text)
     valid = [cid for cid in found if cid in by_id]
     invalid = [cid for cid in found if cid not in by_id]
     cited = set(valid)
 
-    # 본문이 실제로 인용한 청크만 Source·Evidence 로 올린다 — 인용 사슬을 닫는다.
-    sources, evidence = {}, {}
-    for cid in cited:
-        chunk = by_id[cid]
-        source_id = chunk.get("source_id") or chunk.get("source", "unknown_source")
-        collection = chunk.get("collection", "ecosystem")
-        sources.setdefault(source_id, Source(
-            source_id=source_id, run_id=run_id, collection=collection,
-            allowed_uses=["market"], title=chunk.get("title", source_id)))
-        evidence[cid] = Evidence(
-            evidence_id=cid, source_id=source_id, run_id=run_id, collection=collection,
-            allowed_uses=["market"], quote=chunk.get("text", "")[:300],
-            location=f"p.{chunk.get('page', 1)}")
+    sources, evidence = register(cited, by_id, run_id, "market")
 
     covered = {tech for cid in cited for tech in by_id[cid].get("applies_to", [])}
     if valid and not invalid and len(covered) == len(TECHS):
@@ -147,8 +141,9 @@ def market(state) -> dict:
                             evidence=list(evidence.values()), gaps=gaps)
     return {
         "market": assessment.model_dump(),
-        "trace": [{"node": "market", "status": status, "attempt": 1,
+        "trace": [{"node": "market", "status": status, "attempt": attempt,
                    "timestamp": datetime.now(timezone.utc).isoformat(),
                    "chunks": len(chunks), "citations": len(valid),
+                   "number_problems": len(problems),
                    "invalid_citations": len(invalid), "covered_techs": sorted(covered)}],
     }

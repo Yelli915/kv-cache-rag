@@ -17,7 +17,6 @@ ROLE_SCOPES = {
     'market': {'direct', 'ecosystem'},
     'domain': {'direct', 'comparison', 'secondary'},
 }
-TRACE: list[dict] = []  # Deprecated import compatibility; no mutable execution log.
 
 
 def build():

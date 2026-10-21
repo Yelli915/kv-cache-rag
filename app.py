@@ -6,9 +6,6 @@
 
 실행 하나가 `runs/<run_id>/` 하나를 소유한다. R3 의 웹 스냅샷도 그 아래에 쌓이므로
 run_id 를 발급하는 것이 이 파일의 첫 번째 책임이다.
-
-**R4·R5 가 새 Assessment 계약으로 이행하기 전에는 끝까지 돌지 않는다.** research 노드에서
-NotImplementedError 로 멈추고 실패를 기록한다. 전 경로 실행은 `scripts/r1_smoke.py` 로 한다.
 """
 
 import argparse
@@ -27,7 +24,7 @@ os.chdir(_ROOT)
 
 
 from dotenv import load_dotenv
-from langchain_community.callbacks import get_openai_callback
+from langchain_core.callbacks import get_usage_metadata_callback
 
 from src.graph import MergeConflict, build_graph, invoke, resume_state, run_dir
 from src.llm import enable_cache, llm_report
@@ -57,8 +54,8 @@ GENERATION_NODES = ("research", "maturity", "market", "stakeholder",
 def _accounting(state, usage) -> dict:
     """설계서 §6 — 토큰 사용량과 호출 집계. 실제 비용은 이 기록으로 확인한다.
 
-    `llm_calls`·토큰은 콜백이 센 실제 API 호출이라 정확하다. 캐시로 재사용한 응답은
-    호출이 없으므로 0 으로 잡히고, 그게 실제 비용이다.
+    토큰은 콜백이 센 실제 API 응답이라 정확하다(제공자 무관). 캐시로 재사용한 응답은
+    호출이 없으므로 0 으로 잡히고, 그게 실제 비용이다. 실제 호출 수는 `cache_misses`다.
     나머지는 trace 에서 센 값이다 — 콜백은 어느 노드가 불렀는지 모른다.
     """
     events = state.get("trace") or []
@@ -70,13 +67,10 @@ def _accounting(state, usage) -> dict:
         "retries": sum(1 for e in events if (e.get("attempt") or 1) > 1),
     }
     if usage is not None:
-        record |= {
-            "llm_calls": usage.successful_requests,
-            "prompt_tokens": usage.prompt_tokens,
-            "completion_tokens": usage.completion_tokens,
-            "total_tokens": usage.total_tokens,
-            "cost_usd": round(usage.total_cost, 4),
-        }
+        # {model: {input_tokens, output_tokens, total_tokens, ...}} — 모델별로 합산한다
+        per_model = usage.usage_metadata
+        record |= {key: sum(m.get(key, 0) for m in per_model.values())
+                   for key in ("input_tokens", "output_tokens", "total_tokens")}
     return record
 
 
@@ -118,13 +112,15 @@ def main():
         state = {"run_id": args.run_id or new_run_id(), "run_status": "running", "trace": [],
                  "run_config": {"domain": args.domain, "model": settings()["llm"],
                                 "limits": settings()["limits"], "started_at": utcnow(),
-                                "no_carry_review": args.no_carry_review, **config}}
+                                "no_carry_review": args.no_carry_review,
+                                # Evidence.quote 가 청크 전문이라 수치 검사를 할 수 있는 실행이다
+                                "numeric_check": True, **config}}
         start = "setup"
 
     directory = start_run(state)
     print(f"[run] {state['run_id']} · {directory}")
 
-    with get_openai_callback() as usage:
+    with get_usage_metadata_callback() as usage:
         try:
             final = invoke(build_graph(start=start), state)
         except MergeConflict as exc:
@@ -143,13 +139,13 @@ def main():
         print(f"검토 판정 원장에서 가져온 Claim {len(carried)}건 "
               f"(주장·근거가 완전히 같은 것만)")
 
-    if final.get("review_status") == "pending":
+    if status == "failed":
+        print(f"실패: {directory/'run.json'} 확인")
+    elif final.get("review_status") == "pending":
         # §8 — ID 대조만으로 자동 통과시키지 않는다. 사람이 주장과 근거를 나란히 본다.
         print(f"검토 대기 — Claim {len(pending)}건. {directory/'review.csv'} 의 "
               f"review_result(확인|부결)·reviewer 를 채운 뒤\n"
               f"  uv run python app.py --resume {state['run_id']}")
-    elif status == "failed":
-        print(f"실패: {directory/'run.json'} 확인")
     else:
         # run_status 는 §7 정의를 따라 partial 로 남는다. 사람에게는 "보고서가 나왔고
         # 평가 보류가 몇 건 있다" 가 읽을 값이라 그렇게 적는다.

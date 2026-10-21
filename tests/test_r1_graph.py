@@ -152,6 +152,27 @@ def test_llm_cache_counts_hits_and_misses(tmp_path, monkeypatch):
     assert llm.llm_report() | {"cache_hits": 1, "cache_misses": 1} == llm.llm_report()
 
 
+def test_cache_hit_counts_zero_tokens(tmp_path, monkeypatch):
+    """저장된 응답은 원래 호출의 토큰 수를 들고 있다. 재사용분을 이번 실행 비용으로 세면 안 된다."""
+    from langchain_core.callbacks import get_usage_metadata_callback
+    from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+    from langchain_core.messages import AIMessage
+
+    from src import llm
+
+    monkeypatch.setattr(llm, "_cache", None)
+    llm.enable_cache(str(tmp_path / "llm.sqlite"))
+    reply = lambda: AIMessage("응답", response_metadata={"model_name": "m"},
+                              usage_metadata={"input_tokens": 10, "output_tokens": 5, "total_tokens": 15})
+    model = GenericFakeChatModel(messages=iter([reply(), reply()]))
+
+    with get_usage_metadata_callback() as usage:
+        model.invoke("같은 프롬프트")      # miss — 실제 호출
+        model.invoke("같은 프롬프트")      # hit — 호출 없음
+
+    assert usage.usage_metadata["m"]["total_tokens"] == 15
+
+
 def test_run_records_token_usage_and_call_counts():
     """§6 — 실제 비용은 토큰 사용량과 실행 기록으로 확인한다."""
     from types import SimpleNamespace
@@ -166,16 +187,17 @@ def test_run_records_token_usage_and_call_counts():
         {"node": "synthesis", "status": "ok", "attempt": 1},
         {"node": "report", "status": "ok", "attempt": 1},
     ]}
-    usage = SimpleNamespace(successful_requests=6, prompt_tokens=41000,
-                            completion_tokens=7120, total_tokens=48120, total_cost=0.3141)
+    usage = SimpleNamespace(usage_metadata={
+        "gemini-2.5-flash": {"input_tokens": 41000, "output_tokens": 7000, "total_tokens": 48000},
+        "gemini-2.5-pro": {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
+    })
 
     record = app._accounting(state, usage)
 
     assert record["node_events"] == {"research": 1, "stakeholder": 2, "synthesis": 1}
     assert record["tool_calls"] == 1          # tool 이 붙은 이벤트만 센다
     assert record["retries"] == 1             # attempt > 1
-    assert record["llm_calls"] == 6 and record["total_tokens"] == 48120
-    assert record["cost_usd"] == 0.3141
+    assert record["total_tokens"] == 48120 and record["input_tokens"] == 41100
     assert "report" not in record["node_events"]   # 생성 단계가 아니다
 
 
@@ -183,4 +205,24 @@ def test_accounting_without_a_callback_still_records_the_trace():
     import app
 
     record = app._accounting({"trace": [{"node": "market", "attempt": 1}]}, None)
-    assert record["node_events"] == {"market": 1} and "llm_calls" not in record
+    assert record["node_events"] == {"market": 1} and "total_tokens" not in record
+
+
+def test_two_column_split_uses_the_page_bbox():
+    """CropBox 가 0 에서 시작하지 않는 PDF — 좌표를 페이지 bbox 기준으로 자른다."""
+    from src.rag import index
+
+    crops = []
+
+    class Page:
+        bbox, width = (100, 0, 700, 800), 600
+
+        def extract_words(self, **_):          # 가운데(400)를 가로지르는 단어가 없다 → 2단
+            return [{"x0": 120, "x1": 300}, {"x0": 450, "x1": 650}]
+
+        def crop(self, box):
+            crops.append(box)
+            return type("Half", (), {"extract_text": lambda self, **_: "half"})()
+
+    assert index._page_text(Page()) == "half\nhalf"
+    assert crops == [(100, 0, 400.0, 800), (400.0, 0, 700, 800)]

@@ -15,7 +15,6 @@ from langchain_community.vectorstores import FAISS
 
 from src.rag import chunk as chunker
 from src.rag.embed import get_embeddings
-from src.settings import settings
 
 MANIFEST = Path("data/manifest.json")
 COLLECTIONS = ("papers_core", "ecosystem", "context")
@@ -32,11 +31,36 @@ def load_manifest() -> dict:
     return json.loads(MANIFEST.read_text(encoding="utf-8"))
 
 
+# 기본값 3 은 글자 간격이 좁은 2단 학회 논문에서 단어 사이 공백을 지운다
+# ("ITMEachievesuptoa35.7%"). 1.5 면 공백이 돌아오고 1단 논문은 그대로다.
+X_TOLERANCE = 1.5
+
+
+def _page_text(page) -> str:
+    """2단 논문은 단마다 따로 읽는다 — 통째로 읽으면 왼쪽·오른쪽 단의 줄이 번갈아 섞인다.
+
+    페이지 가운데 선을 가로지르는 단어가 거의 없으면 2단으로 본다. 제목·그림처럼 전폭인 요소는
+    좌우로 갈리지만 본문 문장이 섞이는 것보다 낫다. ponytail: 가로지르는 단어 비율 하나로
+    판정한다. 3단·혼합 레이아웃이 들어오면 pdfplumber 의 단 검출로 바꾼다.
+
+    검색 실측(eval/retrieval_metrics.py, 28문항): dense Hit@5 0.43 → 0.68, ITME 0.29 → 0.71.
+    """
+    words = page.extract_words(x_tolerance=X_TOLERANCE)
+    # 좌표는 페이지 bbox 기준이다. CropBox 가 0 에서 시작하지 않는 PDF 도 있다.
+    x0, top, x1, bottom = page.bbox
+    mid = (x0 + x1) / 2
+    if words and sum(w["x0"] < mid < w["x1"] for w in words) / len(words) < 0.02:
+        left = page.crop((x0, top, mid, bottom)).extract_text(x_tolerance=X_TOLERANCE) or ""
+        right = page.crop((mid, top, x1, bottom)).extract_text(x_tolerance=X_TOLERANCE) or ""
+        return left + "\n" + right
+    return page.extract_text(x_tolerance=X_TOLERANCE) or ""
+
+
 def _pages(entry: dict) -> list[tuple[int, str, list]]:
     """매니페스트 항목을 [(페이지, 본문, 표)] 로 읽는다."""
     if entry["type"] == "pdf":
         with pdfplumber.open(entry["local_path"]) as pdf:
-            pages = [(i + 1, p.extract_text() or "", p.extract_tables())
+            pages = [(i + 1, _page_text(p), p.extract_tables())
                      for i, p in enumerate(pdf.pages)]
         # excerpt_only 문서는 sources.json 의 excerpt_pages: [시작, 끝] 로 범위를 좁힌다.
         lo, hi = (entry.get("excerpt_pages") or [0, 10**9])

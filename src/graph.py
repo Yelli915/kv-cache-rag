@@ -203,15 +203,6 @@ def fail(state) -> dict:
     return {"trace": [event("fail", "failed", errors=validation.get("errors", []))]}
 
 
-def _pending(name, owner):
-    """아직 새 계약으로 이행하지 않은 노드 자리. 실행하면 담당과 이유를 말하고 멈춘다."""
-    def node(state):
-        raise NotImplementedError(
-            f"{name} 는 {owner} 가 schema.Assessment 계약으로 이행해야 한다. "
-            f"build_graph({name}=...) 로 mock 을 주입해 실행한다")
-    return node
-
-
 DEFAULT_NODES = {
     "setup": setup,                      # R1
     "research": research,                # R4

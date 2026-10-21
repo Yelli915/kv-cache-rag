@@ -5,6 +5,7 @@ structural completion; R5 must still perform the human semantic review.
 """
 import json
 from src.agents.stakeholder_contract import StakeholderDraft
+from src.output.validate import describe, numeric_errors
 from src.tools.web_search import WebEvidenceStore, format_signals
 from src.tools.web_store import digest, save_json, utcnow
 
@@ -14,6 +15,12 @@ QUERIES = {
     'adopters': 'enterprise adoption deployment user statement barriers',
     'developers': 'developer integration serving kernels discussion',
     'investors': 'investment analyst industry assessment memory infrastructure',
+}
+# 웹 검색은 기술명을 앞에 붙인다(web_store). "ITME" 는 흔한 약어라 단독으로는 무관한 페이지만
+# 돌아왔다(기준선 실행 20261021-121122-d0a3d6 — 도서관 안내, FTC 지침). 무엇의 이름인지 밝힌다.
+CONTEXT = {
+    'TurboQuant': 'KV cache quantization LLM',
+    'ITME': '"Inference Tiered Memory Expansion" CXL KV cache LLM',
 }
 INSTRUCTION = '''너는 KV cache 기술의 이해관계자 평가 담당이다. 한국어로 작성한다.
 대상은 TurboQuant와 ITME이며 competitors/adopters/developers/investors 네 주체를 기술별로 살핀다.
@@ -94,7 +101,7 @@ def make_stakeholder(store: WebEvidenceStore, *, writer=None):
 
         def collect(tech, group, attempt):
             nonlocal successful_searches
-            q = QUERIES[group] + (' official statement primary source' if attempt == 2 else '')
+            q = f'{CONTEXT[tech]} {QUERIES[group]}' + (' official statement primary source' if attempt == 2 else '')
             got = False
             if attempt == 2:
                 supplemented.add((tech, group))
@@ -159,7 +166,7 @@ def make_stakeholder(store: WebEvidenceStore, *, writer=None):
                 try:
                     raw = writer(instruction=INSTRUCTION, domain=domain, context=context, feedback=feedback)
                     draft = raw if isinstance(raw, StakeholderDraft) else StakeholderDraft.model_validate(raw)
-                    proposed = {}
+                    proposed, numeric_bad = {}, []
                     for item in draft.claims:
                         missing = set(item.evidence_ids) - (allowed[item.technology] & visible_ids)
                         if missing:
@@ -173,11 +180,27 @@ def make_stakeholder(store: WebEvidenceStore, *, writer=None):
                                 raise ValueError('cross-run evidence')
                             if 'stakeholder' not in evidence['allowed_uses']:
                                 raise ValueError('forbidden evidence use')
+                        problems = numeric_errors(item.text, {e: all_evidence[e]['quote']
+                                                              for e in item.evidence_ids}, item.technology)
+                        if problems:                 # 인용은 맞고 문장의 수치가 문제다
+                            numeric_bad.append((item, problems))
+                            continue
                         data['claim_id'] = 'claim-' + digest(json.dumps(data, ensure_ascii=False, sort_keys=True))
                         proposed[data['claim_id']] = data
+                    if numeric_bad and not repair_used:
+                        # 인용 수정과 같은 1회 기회를 쓴다
+                        raise ValueError('근거에 있는 수치만 조건과 함께 쓴다. 조건을 확인할 수 없으면 '
+                                         '그 수치를 빼라:\n' + describe([p for _, ps in numeric_bad for p in ps]))
                     claims = list(proposed.values())
                     draft_gaps = [dict(role='stakeholder', **g.model_dump()) for g in draft.gaps]
-                    event('draft_validation', attempt=model_calls, claims=len(claims))
+                    # 수정 뒤에도 수치가 틀린 Claim 만 빼고 Gap 으로 남긴다. 인용 오류와 달리 근거 연결은
+                    # 맞으므로 나머지 Claim 까지 버릴 이유가 없다(interface ③). 인용 오류는 위에서 전체 실패.
+                    draft_gaps += [dict(role='stakeholder', technology=item.technology,
+                                        item=item.stakeholder_group,
+                                        reason='수치 근거 불일치로 제외: ' + ', '.join(p['value'] for p in ps))
+                                   for item, ps in numeric_bad]
+                    event('draft_validation', attempt=model_calls, claims=len(claims),
+                          dropped_for_numbers=len(numeric_bad))
                     errors = []
                     break
                 except Exception as exc:

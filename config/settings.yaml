@@ -1,15 +1,12 @@
 # 실행 설정 — 담당: R1
-# 모델은 .env 의 LLM_MODEL 로 덮어쓸 수 있다. 팀 계정에서 호출이 안 되면 fallback 을 쓴다.
+# 모델은 .env 의 LLM_PROVIDER · LLM_MODEL 로 덮어쓸 수 있다.
 
 llm:
-  model: gpt-5.6-luna
-  fallback: gpt-4.1-mini      # 위 모델 미지원/미가용 시 .env LLM_MODEL 로 교체
+  provider: google_genai      # langchain init_chat_model 의 model_provider. OpenAI 는 openai
+  model: gemini-3.8-flash
   temperature: 0
   seed: 20260922              # 재현용 고정값. 바꾸면 같은 근거에서도 문장이 달라진다.
                               # temperature=0 만으로는 같은 출력이 보장되지 않는다.
-
-retrieval:
-  top_k: 5                    # dense 코사인 전용. RRF 상수는 R3 검색에서 읽지 않아 제거했다.
 
 # 실행 단위 설정 — app.py 가 run_config 로 묶어 State 에 넣는다 (R1)
 run:
@@ -29,11 +26,9 @@ run:
     min_body_chars: 120       # 빈 문서·짧은 오류 페이지 차단
     timeout: 15               # HTTP 연결/read timeout(초)
 
+# 200쪽 상한·웹 쪽수 환산은 sources.json(page_budget, chars_per_page_a4_95pt)이 정한다.
+# 재시도 횟수는 설정이 아니라 노드 코드다 — 부록 A "노드 내부 최대 1회".
 limits:
-  max_pages: 200              # 색인 대상 전체(3 컬렉션) 합계 상한
-  web_chars_per_page: 3200    # 웹 문서 쪽수 환산
   chunk_tokens: 400
   chunk_overlap: 80
   chunk_hard_cap: 512         # 임베딩 입력 한도. 초과분은 의미 단위에서 재분할
-  retrieval_round: 2          # 기술 조사 최초 1회 + 질의 보완 1회 (설계서 §8)
-  validation_round: 2         # 최초 1회 + 인용 수정 1회

@@ -5,7 +5,7 @@ from html import escape
 from langchain_core.tools import tool, StructuredTool
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
-from src.tools.web_store import WebEvidenceStore, FetchedPage
+from src.tools.web_store import WebEvidenceStore, FetchedPage  # noqa: F401 — 호출자가 여기서 가져간다
 
 _CURRENT: ContextVar[WebEvidenceStore | None] = ContextVar('r3_web_store', default=None)
 

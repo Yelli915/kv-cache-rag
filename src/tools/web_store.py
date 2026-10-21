@@ -6,7 +6,7 @@ import re
 import threading
 from pathlib import Path
 from copy import deepcopy
-from src.tools.web_fetch import FetchedPage, fetch_page, extract_body, public_url
+from src.tools.web_fetch import FetchedPage, fetch_page, extract_body, public_url  # noqa: F401 — web_search 가 다시 내보낸다
 
 
 def utcnow():

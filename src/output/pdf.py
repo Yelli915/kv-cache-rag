@@ -14,12 +14,10 @@
     uv run python -m src.output.pdf
 """
 
-import json
 import sys
 from pathlib import Path
 
 
-RUNS_DIR = Path("runs")
 DEFAULT_REPORT = Path("output/report.md")
 
 FINAL_FILENAME = (
@@ -89,32 +87,6 @@ pre {
     overflow-wrap: anywhere;
 }
 """
-
-
-def _read_validation_errors(run_dir: Path) -> list:
-    """현재 run의 validation error를 읽는다."""
-    candidates = [
-        run_dir / "validation.json",
-        run_dir / "validation-errors.json",
-        run_dir / "final-validation.json",
-    ]
-
-    for path in candidates:
-        if not path.exists():
-            continue
-
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            continue
-
-        if isinstance(data, list):
-            return data
-
-        if isinstance(data, dict):
-            return data.get("validation_errors") or data.get("errors") or []
-
-    return []
 
 
 def _extract_section(markdown_text: str, heading: str, next_heading: str) -> str:

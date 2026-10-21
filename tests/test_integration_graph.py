@@ -13,7 +13,7 @@ import json
 
 import pytest
 
-from src.agents import domain, market, maturity, research
+from src.agents import common, domain, market, maturity, research
 from src.graph import build_graph, invoke
 from src.output import pdf
 from src.schema import Assessment
@@ -37,11 +37,11 @@ ECOSYSTEM = [
 ]
 CHUNKS = PAPERS + ECOSYSTEM
 
-PAPERS_TEXT = (
-    "## TurboQuant\nTurboQuant 는 3.5비트 양자화를 보고한다 [aaaaaaaaaaaa].\n\n"
-    "## ITME\nITME 는 NVMe-oF 대비 1.80배 처리량을 보고한다 [bbbbbbbbbbbb].\n\n"
-    "근거 공백: 결합 실측 자료 없음"
-)
+PAPERS_DRAFT = {
+    "turboquant": "TurboQuant 는 3.5비트 양자화를 보고한다 [aaaaaaaaaaaa].",
+    "itme": "ITME 는 NVMe-oF 대비 1.80배 처리량을 보고한다 [bbbbbbbbbbbb].",
+    "gaps": [{"technology": "both", "item": "결합 실측 자료 없음"}],
+}
 MARKET_TEXT = (
     "## ① 시장 규모/성장성\n정량 리포트 미확인 [dddddddddddd].\n\n"
     "## ② 상용화/채택 현황\n발표 단계, 배포 확인 미확인 [cccccccccccc].\n\n"
@@ -99,13 +99,13 @@ class FakeSynthesis:
 
 @pytest.fixture
 def wired(monkeypatch, tmp_path):
-    for module, chunks, text in ((research, PAPERS, PAPERS_TEXT),
-                                 (maturity, PAPERS, PAPERS_TEXT),
-                                 (domain, PAPERS, PAPERS_TEXT),
-                                 (market, ECOSYSTEM, MARKET_TEXT)):
+    for module, chunks in ((research, PAPERS), (maturity, PAPERS), (domain, PAPERS),
+                           (market, ECOSYSTEM)):
         monkeypatch.setattr(module, "bind_document_search",
                             lambda *a, _chunks=chunks, **k: FakeSearch(_chunks))
-        monkeypatch.setattr(module, "run_node", lambda *a, _text=text, **k: _text)
+    monkeypatch.setattr(market, "run_node", lambda *a, **k: MARKET_TEXT)
+    monkeypatch.setattr(common, "draft",
+                        lambda *a, schema=common.Draft, **k: schema.model_validate(PAPERS_DRAFT))
 
     from src.agents import report as report_module
     from src.agents import synthesis as synthesis_module

@@ -86,6 +86,38 @@ def test_repair_uses_allowed_evidence_and_keeps_inference_distinct(tmp_path):
     assert out['stakeholder']['status'] == 'partial'
 
 
+def test_number_missing_from_evidence_uses_the_repair_and_names_it(tmp_path):
+    """개선 후 실행 20261021-123030-55c6fb — 35.7% 를 조건 없이 써서 실행 전체가 failed 였다."""
+    s = make_store(tmp_path)
+    calls = []
+    def writer(**kw):
+        calls.append(kw["feedback"])
+        text = "Kim said throughput rose 9배." if len(calls) == 1 else "Kim described integration."
+        return writer_with_claims(s, text=text)(**kw)
+    out = factory(s, writer)({"run_id": "test-run"})
+    assert "9배" in calls[1] and len(calls) <= 3      # 초안 · 수치 수정 · 보완 후 재작성
+    assert out["stakeholder"]["status"] == "partial"
+
+
+
+def test_claim_still_wrong_on_numbers_after_repair_becomes_a_gap_not_a_failed_run(tmp_path):
+    """수치만 틀린 Claim 하나 때문에 나머지 정상 Claim 까지 버리지 않는다(인용 오류는 여전히 전체 실패)."""
+    s = make_store(tmp_path)
+    calls = []
+    def writer(**kw):
+        calls.append(kw["feedback"])
+        eid = next(eid for eid, e in s.manifest["evidence"].items() if "Developer Kim" in e["quote"])
+        return {"claims": [claim(eid),
+                           claim(eid, text="Kim said adoption rose 9배.", stakeholder_group="adopters")],
+                "gaps": []}
+    a = factory(s, writer)({"run_id": "test-run"})["stakeholder"]
+    assert "9배" in calls[1]                                    # 수정 기회는 먼저 쓴다
+    assert a["status"] == "partial"
+    assert [c["stakeholder_group"] for c in a["claims"]] == ["developers"]
+    dropped = [g for g in a["gaps"] if g["item"] == "adopters" and g["technology"] == "TurboQuant"]
+    assert dropped and "9배" in dropped[0]["reason"]
+
+
 def test_inference_without_explanation_and_fact_without_actor_fail(tmp_path):
     for changes in [{'kind': 'inference', 'explanation': ''}, {'actor': ''}]:
         s = make_store(tmp_path)

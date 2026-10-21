@@ -1,22 +1,354 @@
 {
+  "about": "두 기술 각 7개 사실 × 한국어·영어 = 28문항. 정답은 anchor 문구(원문 그대로)를 담은 gold_source 청크 전부다(공백 무시 일치, 설계서 §4 — 겹침으로 같은 근거가 여러 청크에 있으면 모두 정답). gold_chunk_ids 는 `uv run python -m eval.retrieval_metrics --label` 로 anchor 에서 다시 만든다. 코퍼스·청킹이 바뀌면 다시 라벨링한다.",
+  "corpus": "data/manifest.json 2026-10-21",
   "items": [
     {
-      "id": "tq_01_ko",
-      "fact_id": "fact_tq_quant",
+      "id": "tq_lower_bound_ko",
+      "fact_id": "tq_lower_bound",
       "lang": "ko",
       "technology": "TurboQuant",
-      "question": "TurboQuant의 극좌표 양자화 알고리즘의 비트 수는 얼마인가?",
+      "question": "TurboQuant 의 왜곡률은 정보이론적 하한과 얼마나 차이 나는가?",
       "gold_source": "turboquant-paper",
-      "gold_page": 4
+      "anchor": "constant ( 2.7) factor",
+      "gold_chunk_ids": [
+        "f74cdc8f7afd"
+      ]
     },
     {
-      "id": "tq_01_en",
-      "fact_id": "fact_tq_quant",
+      "id": "tq_lower_bound_en",
+      "fact_id": "tq_lower_bound",
       "lang": "en",
       "technology": "TurboQuant",
-      "question": "What is the bit-width of TurboQuant polar quantization?",
+      "question": "How close is TurboQuant's distortion rate to the information-theoretic lower bound?",
       "gold_source": "turboquant-paper",
-      "gold_page": 4
+      "anchor": "constant ( 2.7) factor",
+      "gold_chunk_ids": [
+        "f74cdc8f7afd"
+      ]
+    },
+    {
+      "id": "tq_rotation_ko",
+      "fact_id": "tq_rotation",
+      "lang": "ko",
+      "technology": "TurboQuant",
+      "question": "TurboQuant 은 입력 벡터를 무작위 회전한 뒤 좌표마다 어떤 스칼라 양자화기를 쓰는가?",
+      "gold_source": "turboquant-paper",
+      "anchor": "Beta distribution, we design optimal Lloyd-Max",
+      "gold_chunk_ids": [
+        "97ae09c3e074"
+      ]
+    },
+    {
+      "id": "tq_rotation_en",
+      "fact_id": "tq_rotation",
+      "lang": "en",
+      "technology": "TurboQuant",
+      "question": "Which scalar quantizer does TurboQuant apply to each coordinate after randomly rotating the input?",
+      "gold_source": "turboquant-paper",
+      "anchor": "Beta distribution, we design optimal Lloyd-Max",
+      "gold_chunk_ids": [
+        "97ae09c3e074"
+      ]
+    },
+    {
+      "id": "tq_qjl_residual_ko",
+      "fact_id": "tq_qjl_residual",
+      "lang": "ko",
+      "technology": "TurboQuant",
+      "question": "TurboQuant 은 내적 추정을 비편향으로 만들기 위해 잔차에 무엇을 적용하는가?",
+      "gold_source": "turboquant-paper",
+      "anchor": "apply a QJL [62] on the residual error",
+      "gold_chunk_ids": [
+        "1448e8a00552",
+        "646817650002"
+      ]
+    },
+    {
+      "id": "tq_qjl_residual_en",
+      "fact_id": "tq_qjl_residual",
+      "lang": "en",
+      "technology": "TurboQuant",
+      "question": "What does TurboQuant apply to the residual to make its inner product estimate unbiased?",
+      "gold_source": "turboquant-paper",
+      "anchor": "apply a QJL [62] on the residual error",
+      "gold_chunk_ids": [
+        "1448e8a00552",
+        "646817650002"
+      ]
+    },
+    {
+      "id": "tq_gpu_ko",
+      "fact_id": "tq_gpu",
+      "lang": "ko",
+      "technology": "TurboQuant",
+      "question": "TurboQuant 실험은 어떤 GPU 에서 수행됐는가?",
+      "gold_source": "turboquant-paper",
+      "anchor": "single NVIDIA A100 GPU",
+      "gold_chunk_ids": [
+        "688b2d1d1a66",
+        "dd2fed709695"
+      ]
+    },
+    {
+      "id": "tq_gpu_en",
+      "fact_id": "tq_gpu",
+      "lang": "en",
+      "technology": "TurboQuant",
+      "question": "On what GPU were the TurboQuant experiments performed?",
+      "gold_source": "turboquant-paper",
+      "anchor": "single NVIDIA A100 GPU",
+      "gold_chunk_ids": [
+        "688b2d1d1a66",
+        "dd2fed709695"
+      ]
+    },
+    {
+      "id": "tq_longbench_ko",
+      "fact_id": "tq_longbench",
+      "lang": "ko",
+      "technology": "TurboQuant",
+      "question": "LongBench 에서 3.5비트 TurboQuant 의 평균 점수는 전체 캐시와 비교해 어떠한가?",
+      "gold_source": "turboquant-paper",
+      "anchor": "TurboQuant(ours) 3.5",
+      "gold_chunk_ids": [
+        "672601fce7f5"
+      ]
+    },
+    {
+      "id": "tq_longbench_en",
+      "fact_id": "tq_longbench",
+      "lang": "en",
+      "technology": "TurboQuant",
+      "question": "On LongBench, how does the average score of 3.5-bit TurboQuant compare with the full cache?",
+      "gold_source": "turboquant-paper",
+      "anchor": "TurboQuant(ours) 3.5",
+      "gold_chunk_ids": [
+        "672601fce7f5"
+      ]
+    },
+    {
+      "id": "tq_needle_ko",
+      "fact_id": "tq_needle",
+      "lang": "ko",
+      "technology": "TurboQuant",
+      "question": "Needle-In-A-Haystack 평가에서 문서 길이는 어느 범위로 바뀌었는가?",
+      "gold_source": "turboquant-paper",
+      "anchor": "document size from 4k to 104k tokens",
+      "gold_chunk_ids": [
+        "3493710359d2"
+      ]
+    },
+    {
+      "id": "tq_needle_en",
+      "fact_id": "tq_needle",
+      "lang": "en",
+      "technology": "TurboQuant",
+      "question": "What range of document lengths was used in the Needle-In-A-Haystack evaluation?",
+      "gold_source": "turboquant-paper",
+      "anchor": "document size from 4k to 104k tokens",
+      "gold_chunk_ids": [
+        "3493710359d2"
+      ]
+    },
+    {
+      "id": "tq_streaming_ko",
+      "fact_id": "tq_streaming",
+      "lang": "ko",
+      "technology": "TurboQuant",
+      "question": "TurboQuant 은 KIVI 와 달리 생성 중인 토큰도 양자화하는가?",
+      "gold_source": "turboquant-paper",
+      "anchor": "which leave generated tokens unquantized",
+      "gold_chunk_ids": [
+        "7e487f9539e6",
+        "dae9ae13cc45"
+      ]
+    },
+    {
+      "id": "tq_streaming_en",
+      "fact_id": "tq_streaming",
+      "lang": "en",
+      "technology": "TurboQuant",
+      "question": "Unlike KIVI, does TurboQuant also quantize tokens during streaming generation?",
+      "gold_source": "turboquant-paper",
+      "anchor": "which leave generated tokens unquantized",
+      "gold_chunk_ids": [
+        "7e487f9539e6",
+        "dae9ae13cc45"
+      ]
+    },
+    {
+      "id": "itme_weights_ko",
+      "fact_id": "itme_weights",
+      "lang": "ko",
+      "technology": "ITME",
+      "question": "ITME 은 모델 가중치를 어느 계층으로 오프로드하며 예시 용량은 얼마인가?",
+      "gold_source": "itme-paper",
+      "anchor": "325GBforOPT-175B",
+      "gold_chunk_ids": [
+        "be57dd0e0f4c"
+      ]
+    },
+    {
+      "id": "itme_weights_en",
+      "fact_id": "itme_weights",
+      "lang": "en",
+      "technology": "ITME",
+      "question": "Which tier does ITME offload model weights to, and what example footprint is given?",
+      "gold_source": "itme-paper",
+      "anchor": "325GBforOPT-175B",
+      "gold_chunk_ids": [
+        "be57dd0e0f4c"
+      ]
+    },
+    {
+      "id": "itme_rnic_ko",
+      "fact_id": "itme_rnic",
+      "lang": "ko",
+      "technology": "ITME",
+      "question": "ITME 은 고가의 DPU 대신 무엇으로 원격 메모리를 제공하는가?",
+      "gold_source": "itme-paper",
+      "anchor": "low-costRNICs",
+      "gold_chunk_ids": [
+        "bc6932340f51"
+      ]
+    },
+    {
+      "id": "itme_rnic_en",
+      "fact_id": "itme_rnic",
+      "lang": "en",
+      "technology": "ITME",
+      "question": "What does ITME use instead of expensive DPUs to provide remote memory?",
+      "gold_source": "itme-paper",
+      "anchor": "low-costRNICs",
+      "gold_chunk_ids": [
+        "bc6932340f51"
+      ]
+    },
+    {
+      "id": "itme_aggregate_ko",
+      "fact_id": "itme_aggregate",
+      "lang": "ko",
+      "technology": "ITME",
+      "question": "ITME 은 전송 효율을 높이려고 KV 블록을 어떻게 묶어 보내는가?",
+      "gold_source": "itme-paper",
+      "anchor": "512MBrequest",
+      "gold_chunk_ids": [
+        "e0944fd90527"
+      ]
+    },
+    {
+      "id": "itme_aggregate_en",
+      "fact_id": "itme_aggregate",
+      "lang": "en",
+      "technology": "ITME",
+      "question": "How does ITME aggregate KV blocks to improve transfer efficiency?",
+      "gold_source": "itme-paper",
+      "anchor": "512MBrequest",
+      "gold_chunk_ids": [
+        "e0944fd90527"
+      ]
+    },
+    {
+      "id": "itme_read_priority_ko",
+      "fact_id": "itme_read_priority",
+      "lang": "ko",
+      "technology": "ITME",
+      "question": "ITME 은 SSD 쓰기가 프리페치 성능을 떨어뜨리는 문제를 어떻게 완화하는가?",
+      "gold_source": "itme-paper",
+      "anchor": "ITMEimplementsaread-priority",
+      "gold_chunk_ids": [
+        "c66ed65a82ae"
+      ]
+    },
+    {
+      "id": "itme_read_priority_en",
+      "fact_id": "itme_read_priority",
+      "lang": "en",
+      "technology": "ITME",
+      "question": "How does ITME keep SSD writes from degrading prefetch performance?",
+      "gold_source": "itme-paper",
+      "anchor": "ITMEimplementsaread-priority",
+      "gold_chunk_ids": [
+        "c66ed65a82ae"
+      ]
+    },
+    {
+      "id": "itme_throughput_ko",
+      "fact_id": "itme_throughput",
+      "lang": "ko",
+      "technology": "ITME",
+      "question": "CPU 오프로드 대비 ITME 의 처리량 향상은 얼마인가?",
+      "gold_source": "itme-paper",
+      "anchor": "ITMEachievesuptoa35.7%",
+      "gold_chunk_ids": [
+        "170d494f7a49",
+        "c906660d0a96"
+      ]
+    },
+    {
+      "id": "itme_throughput_en",
+      "fact_id": "itme_throughput",
+      "lang": "en",
+      "technology": "ITME",
+      "question": "How much throughput improvement does ITME achieve over the CPU-offload baseline?",
+      "gold_source": "itme-paper",
+      "anchor": "ITMEachievesuptoa35.7%",
+      "gold_chunk_ids": [
+        "170d494f7a49",
+        "c906660d0a96"
+      ]
+    },
+    {
+      "id": "itme_setup_ko",
+      "fact_id": "itme_setup",
+      "lang": "ko",
+      "technology": "ITME",
+      "question": "ITME 성능 평가는 어떤 데이터셋과 동시 대화 수로 수행됐는가?",
+      "gold_source": "itme-paper",
+      "anchor": "128concurrentconversations",
+      "gold_chunk_ids": [
+        "0094d0a83dfe",
+        "4351cb815153"
+      ]
+    },
+    {
+      "id": "itme_setup_en",
+      "fact_id": "itme_setup",
+      "lang": "en",
+      "technology": "ITME",
+      "question": "What dataset and number of concurrent conversations were used to evaluate ITME?",
+      "gold_source": "itme-paper",
+      "anchor": "128concurrentconversations",
+      "gold_chunk_ids": [
+        "0094d0a83dfe",
+        "4351cb815153"
+      ]
+    },
+    {
+      "id": "itme_fpga_limit_ko",
+      "fact_id": "itme_fpga_limit",
+      "lang": "ko",
+      "technology": "ITME",
+      "question": "ITME FPGA 프로토타입은 캐시 미스 때 대역폭이 얼마나 떨어지는가?",
+      "gold_source": "itme-paper",
+      "anchor": "degradesbelow1GB/s",
+      "gold_chunk_ids": [
+        "0b481de17072",
+        "fc746cb0609c"
+      ]
+    },
+    {
+      "id": "itme_fpga_limit_en",
+      "fact_id": "itme_fpga_limit",
+      "lang": "en",
+      "technology": "ITME",
+      "question": "How far does the ITME FPGA prototype's bandwidth drop on cache misses?",
+      "gold_source": "itme-paper",
+      "anchor": "degradesbelow1GB/s",
+      "gold_chunk_ids": [
+        "0b481de17072",
+        "fc746cb0609c"
+      ]
     }
   ]
 }

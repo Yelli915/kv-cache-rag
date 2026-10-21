@@ -72,7 +72,7 @@ def show(run_id, *, runs_dir=None, only_pending=False, claim=None, width=None):
         print(_wrap(head["claim_text"], width))
         for index, row in enumerate(claim_rows, 1):
             if not row["evidence_id"]:
-                print(f"\n  근거 없음 — §6 에 따라 Gap 이어야 한다")
+                print("\n  근거 없음 — §6 에 따라 Gap 이어야 한다")
                 continue
             print(f"\n  근거 {index}/{len(claim_rows)} · {row['source_id']} "
                   f"· {row['location'] or '위치 미상'} · {row['evidence_id']}")

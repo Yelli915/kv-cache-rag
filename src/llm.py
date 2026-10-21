@@ -1,6 +1,6 @@
 """LLM 팩토리 — 담당: R1
 
-모델은 config/settings.yaml 기본값을 쓰되 .env 의 LLM_MODEL 이 우선한다.
+모델은 config/settings.yaml 기본값을 쓰되 .env 의 LLM_PROVIDER · LLM_MODEL 이 우선한다.
 
 **재현성은 모델이 아니라 캐시가 담당한다.** `gpt-5.6-luna` 같은 추론형 모델은
 langchain 이 temperature 를 아예 보내지 않고 seed 도 대개 무시한다. 실측에서 인용 근거가
@@ -39,8 +39,15 @@ class _CountingCache:
         found = self._inner.lookup(prompt, llm_string)
         if found is None:
             self.misses += 1
-        else:
-            self.hits += 1
+            return None
+        self.hits += 1
+        # 저장된 응답은 원래 호출의 토큰 수를 들고 있다. 그대로 두면 사용량 콜백이
+        # 재사용분을 이번 실행의 비용으로 센다 — 적중은 호출이 없었으므로 0 이다.
+        for gen in found:
+            message = getattr(gen, "message", None)
+            if getattr(message, "usage_metadata", None):
+                gen.message = message.model_copy(update={"usage_metadata": {
+                    "input_tokens": 0, "output_tokens": 0, "total_tokens": 0}})
         return found
 
     def update(self, prompt: str, llm_string: str, return_val) -> None:
@@ -64,6 +71,10 @@ def model_name() -> str:
     return os.getenv("LLM_MODEL") or settings()["llm"]["model"]
 
 
+def provider() -> str:
+    return os.getenv("LLM_PROVIDER") or settings()["llm"]["provider"]
+
+
 def get_llm(temperature: float | None = None):
     """설정값이 아니라 **실제로 적용된** 파라미터를 기록해 둔다.
 
@@ -74,11 +85,12 @@ def get_llm(temperature: float | None = None):
     extra = {"seed": cfg["seed"]} if cfg.get("seed") is not None else {}
     llm = init_chat_model(
         model_name(),
-        model_provider="openai",
+        model_provider=provider(),
         temperature=cfg["temperature"] if temperature is None else temperature,
         **extra,
     )
     _effective.update(
+        provider=provider(),
         model=model_name(),
         temperature=getattr(llm, "temperature", None),
         seed=getattr(llm, "seed", None),

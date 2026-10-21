@@ -6,7 +6,7 @@ trace 만 쓰는지, 반환한 dict 가 Assessment 로 검증되는지, 인용 �
 
 import pytest
 
-from src.agents import domain, market, maturity, research
+from src.agents import common, domain, market, maturity, research
 from src.schema import Assessment
 
 NODES = [
@@ -32,23 +32,30 @@ class FakeSearch:
 
 
 def fake_text(instruction, domain_text, context):
-    """두 기술 절 + 세 시장 절을 모두 담아 어느 노드의 파서에도 걸리게 한다."""
+    """market 의 세 절."""
     return (
-        "## TurboQuant\nTurboQuant 는 3.5비트 양자화를 보고한다 [aaaaaaaaaaaa].\n\n"
-        "## ITME\nITME 는 NVMe-oF 대비 1.80배 처리량을 보고한다 [bbbbbbbbbbbb].\n\n"
         "## ① 시장 규모/성장성\n정량 리포트 미확인 [aaaaaaaaaaaa].\n\n"
         "## ② 상용화/채택 현황\n발표 단계, 배포 확인 미확인 [bbbbbbbbbbbb].\n\n"
         "## ③ 생태계 지지\n일반 CXL 근거이며 추론 특화 여부 미확인 [bbbbbbbbbbbb].\n\n"
-        "## 결합 가설\n두 기술의 결합은 실측 근거가 없다 [aaaaaaaaaaaa].\n\n"
         "근거 공백: TurboQuant 서빙 처리량 미확인 | 결합 실측 자료 없음"
     )
+
+
+def fake_draft(instruction, domain_text, context, schema=common.Draft, feedback=""):
+    return schema.model_validate({
+        "turboquant": "TurboQuant 는 3.5비트 양자화를 보고한다 [aaaaaaaaaaaa].",
+        "itme": "ITME 는 NVMe-oF 대비 1.80배 처리량을 보고한다 [bbbbbbbbbbbb].",
+        "hypothesis": "두 기술의 결합은 실측 근거가 없다 [aaaaaaaaaaaa].",
+        "gaps": [{"technology": "TurboQuant", "item": "서빙 처리량"}],
+    })
 
 
 @pytest.fixture
 def stub(monkeypatch):
     for module, _, _ in NODES:
         monkeypatch.setattr(module, "bind_document_search", lambda *a, **k: FakeSearch())
-        monkeypatch.setattr(module, "run_node", fake_text)
+    monkeypatch.setattr(market, "run_node", fake_text)
+    monkeypatch.setattr(common, "draft", fake_draft)
 
 
 STATE = {"run_id": "r4-test", "run_config": {"domain": "데이터센터/클라우드",

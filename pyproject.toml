@@ -13,7 +13,7 @@ dependencies = [
     "langchain-tavily>=0.2.12",     # 시장/이해관계자 웹 조사
     "sentence-transformers>=5.1.1",
     "faiss-cpu>=1.12.0",
-    "rank-bm25>=0.2.2",             # EnsembleRetriever(RRF) 의 sparse 축
+    "rank-bm25>=0.2.2",             # eval/retrieval_metrics.py 의 BM25·RRF 비교 (운영 검색은 dense)
     "pdfplumber>=0.11.8",           # 페이지 메타데이터 + 표 추출
     "requests>=2.32",               # scripts/prepare_sources.py
     "pypdf>=5.1",                   # 매니페스트 페이지 수
@@ -23,6 +23,7 @@ dependencies = [
     "transformers>=4.57",        # 토큰 기준 청킹용 토크나이저
     "torch>=2.4",                # sentence-transformers 가 끌고 온다. Linux 는 CPU 휠로 고정(아래)
     "python-dotenv>=1.2.1",
+    "langchain-google-genai>=4.4.2",
 ]
 
 [project.optional-dependencies]
