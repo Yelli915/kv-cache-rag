@@ -42,7 +42,7 @@ def main():
                    ("context", "데이터센터 추론 비용")]:
         hits = search_source_documents.invoke({"query": q, "collection": col, "top_k": 3})
         if not hits:
-            print(f"  {col:12s} ⚠ 근거 0건 — sources.yaml 미확정")
+            print(f"  {col:12s} ⚠ 근거 0건 — sources.json 미확정")
             continue
         assert all(h["collection"] == col for h in hits), f"{col} 컬렉션 누수"
         print(f"  {col:12s} {len(hits)}건  예: {hits[0]['source']} p{hits[0]['page']} "

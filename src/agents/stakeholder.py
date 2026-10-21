@@ -8,7 +8,7 @@ from src.agents.common import TECHS, domain_of
 from src.agents.stakeholder_contract import StakeholderDraft
 from src.output.validate import describe, numeric_errors
 from src.tools.web_search import WebEvidenceStore, format_signals
-from src.tools.web_store import digest, save_json, utcnow
+from src.tools.web_store import digest, utcnow
 
 QUERIES = {
     'competitors': 'competing technology vendor response statement',
@@ -236,11 +236,6 @@ def make_stakeholder(store: WebEvidenceStore, *, writer=None):
         if event_path.exists():
             trace = [json.loads(line) for line in event_path.read_text().splitlines()[start_lines:]] + trace
         event('assessment', status, claims=len(claims), gaps=len(gaps), review_status='pending')
-        save_json(store.directory.parent / 'stakeholder.json', assessment)
-        save_json(store.directory.parent / 'stakeholder-validation.json', {'errors': errors, 'review_status': 'pending'})
-        with (store.directory.parent / 'stakeholder-trace.jsonl').open('a', encoding='utf-8') as f:
-            for row in trace:
-                f.write(json.dumps(row, ensure_ascii=False) + '\n')
         return {'stakeholder': assessment, 'trace': trace}
     return node
 

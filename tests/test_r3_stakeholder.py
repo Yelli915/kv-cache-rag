@@ -1,5 +1,3 @@
-import json
-from pathlib import Path
 import pytest
 from src.agents import stakeholder as agent
 from src.tools.web_search import WebEvidenceStore
@@ -44,7 +42,6 @@ def test_new_assessment_contains_linked_claims_and_only_own_state_keys(tmp_path)
     assert set(a['claims'][0]['evidence_ids']) <= ids
     assert len(a['gaps']) == 7
     assert all(e['run_id'] == 'test-run' for e in a['evidence'])
-    assert Path(s.directory.parent / 'stakeholder.json').is_file()
     assert all('timestamp' in t and 'attempt' in t for t in out['trace'])
 
 
@@ -94,7 +91,7 @@ def test_number_missing_from_evidence_uses_the_repair_and_names_it(tmp_path):
         text = "Kim said throughput rose 9배." if len(calls) == 1 else "Kim described integration."
         return writer_with_claims(s, text=text)(**kw)
     out = factory(s, writer)({"run_id": "test-run"})
-    assert "9배" in calls[1] and len(calls) <= 3      # 초안 · 수치 수정 · 보완 후 재작성
+    assert "9배" in calls[1] and len(calls) == 3      # 초안 · 수치 수정 · 보완 후 재작성
     assert out["stakeholder"]["status"] == "partial"
 
 
@@ -116,11 +113,12 @@ def test_claim_still_wrong_on_numbers_after_repair_becomes_a_gap_not_a_failed_ru
     assert dropped and "9배" in dropped[0]["reason"]
 
 
-def test_inference_without_explanation_and_fact_without_actor_fail(tmp_path):
-    for changes in [{'kind': 'inference', 'explanation': ''}, {'actor': ''}]:
-        s = make_store(tmp_path)
-        out = factory(s, writer_with_claims(s, **changes))({'run_id': 'test-run'})
-        assert out['stakeholder']['status'] == 'failed'
+@pytest.mark.parametrize('changes', [{'kind': 'inference', 'explanation': ''}, {'actor': ''}],
+                         ids=['inference-without-explanation', 'fact-without-actor'])
+def test_incomplete_claim_fails(tmp_path, changes):
+    s = make_store(tmp_path)
+    out = factory(s, writer_with_claims(s, **changes))({'run_id': 'test-run'})
+    assert out['stakeholder']['status'] == 'failed'
 
 
 def test_supplement_search_can_recover_missing_body(tmp_path):
@@ -162,7 +160,7 @@ def test_writer_does_not_receive_unbounded_model_context(tmp_path):
         assert len(kw['context']) <= 1000
         return {'claims': [], 'gaps': []}
     out = factory(s, writer)({'run_id': 'test-run', 'run_config': {'web_context_chars': 1000}})
-    assert out['stakeholder']['status'] != 'failed'
+    assert out['stakeholder']['status'] == 'partial'
     assert any(t.get('context_omitted') for t in out['trace'])
 
 
@@ -175,8 +173,6 @@ def test_structurally_complete_assessment_still_requires_human_review(tmp_path):
                            for g in ('competitors', 'adopters', 'developers', 'investors')], 'gaps': []}
     out = factory(s, writer)({'run_id': 'test-run'})
     assert out['stakeholder']['status'] == 'completed'
-    validation = json.loads((s.directory.parent / 'stakeholder-validation.json').read_text())
-    assert validation['review_status'] == 'pending'
     assert out['stakeholder']['gaps'] == []
 
 
@@ -197,8 +193,7 @@ def test_total_search_outage_is_failed_not_missing_public_evidence(tmp_path):
     s = make_store(tmp_path, searcher=unavailable)
     out = factory(s, lambda **kw: pytest.fail('no evidence'))({'run_id': 'test-run'})
     assert out['stakeholder']['status'] == 'failed'
-    log = json.loads((s.directory.parent / 'stakeholder-validation.json').read_text())
-    assert log['errors']
+    assert any(t['status'] == 'failed' for t in out['trace'])
 
 
 def test_draft_gap_triggers_one_supplement_even_when_generic_body_was_fetched(tmp_path):

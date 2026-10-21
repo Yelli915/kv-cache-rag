@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from src.agents import common, domain, market, maturity, research
 from src.agents.common import Draft, DomainDraft, evaluate
 from src.schema import Assessment
-from tests.helpers import ITME_ID, TQ_ID, search
+from tests.helpers import ITME_ID, TQ_ID, FakeLLM, search
 
 UNSEEN_ID = "ffffffffffff"
 
@@ -98,11 +98,25 @@ def test_section_without_citation_is_a_gap_not_a_claim(monkeypatch):
 
 
 def test_unknown_citation_fails_with_no_claims(monkeypatch):
-    drafts(monkeypatch, {"turboquant": f"압축 [{UNSEEN_ID}].", "itme": f"가속 [{ITME_ID}].", "gaps": []})
+    calls = drafts(monkeypatch, {"turboquant": f"압축 [{UNSEEN_ID}].", "itme": f"가속 [{ITME_ID}].", "gaps": []})
 
     a = run([TQ, ITME])["research"]
 
     assert a["status"] == "failed" and a["claims"] == []
+    assert len(calls) == 2, "재작성 기회를 쓰고도 남았을 때만 failed 다"
+
+
+def test_unknown_citation_gets_one_rewrite_naming_the_id(monkeypatch):
+    """없는 ID 하나로 노드 전체가 failed 가 되기 전에 1회 재작성 기회를 쓴다(부록 A)."""
+    calls = drafts(monkeypatch,
+                   {"turboquant": f"압축 [{UNSEEN_ID}].", "itme": f"가속 [{ITME_ID}].", "gaps": []},
+                   {"turboquant": f"압축 [{TQ_ID}].", "itme": f"가속 [{ITME_ID}].", "gaps": []})
+
+    out = run([TQ, ITME])
+
+    assert calls[0] == "" and UNSEEN_ID in calls[1]
+    assert out["research"]["status"] == "completed" and out["trace"][0]["attempt"] == 2
+    assert out["trace"][0]["invalid_citations"] == 0
 
 
 def test_no_citations_fails_cleanly(monkeypatch):
@@ -203,15 +217,29 @@ def test_market_unsupported_number_gets_one_rewrite(monkeypatch):
            chunk("dddddddddddd", applies_to=["TurboQuant"], collection="ecosystem", scope="ecosystem",
                  text="Frameworks support KV cache quantization.")]
     monkeypatch.setattr(market, "bind_document_search", lambda *a, **k: search(eco))
-    texts = iter(["## ① 시장 규모/성장성\n시장이 30% 성장 [cccccccccccc].\n## ② 상용화/채택 현황\n지원 [dddddddddddd].",
-                  "## ① 시장 규모/성장성\n정량 리포트 미확인 [cccccccccccc].\n## ② 상용화/채택 현황\n지원 [dddddddddddd]."])
-    instructions = []
-    monkeypatch.setattr(market, "run_node", lambda instruction, d, c: instructions.append(instruction) or next(texts))
+    feedbacks = drafts(monkeypatch,
+                       {"size": "시장이 30% 성장 [cccccccccccc].", "adoption": "지원 [dddddddddddd]."},
+                       {"size": "정량 리포트 미확인 [cccccccccccc].", "adoption": "지원 [dddddddddddd]."})
 
     out = market.market({"run_id": "r4-test", "run_config": {}})
 
-    assert len(instructions) == 2 and "30%" in instructions[1]
+    assert len(feedbacks) == 2 and "30%" in feedbacks[1]
     assert out["trace"][0]["attempt"] == 2 and out["trace"][0]["number_problems"] == 0
+    # 항목별 절이 Claim 하나씩이 되고, 생태계(ecosystem) 청크도 기술 확보로 센다
+    claims = out["market"]["claims"]
+    assert [c["claim_id"].split("_")[2] for c in claims] == ["①", "②"]
+    assert claims[0]["text"].startswith("## ① 시장 규모/성장성\n")
+    assert out["market"]["status"] == "completed"
+
+
+def test_market_prompt_has_no_per_technology_field_rule(monkeypatch):
+    """market 에는 turboquant·itme 필드가 없다. 그 규칙을 프롬프트에 싣지 않는다."""
+    fake = FakeLLM()
+    monkeypatch.setattr(common, "get_llm", lambda: fake)
+    common.draft("i", "d", "c", schema=market.MarketDraft)
+    common.draft("i", "d", "c", schema=Draft)
+
+    assert "turboquant 에는" not in fake.prompts[0] and "turboquant 에는" in fake.prompts[1]
 
 
 # ── 노드별 검색 방식 ──────────────────────────────────────────────────────────
@@ -242,6 +270,18 @@ def test_research_widens_once_when_a_technology_is_unretrieved(monkeypatch):
 def test_maturity_supplements_once_per_unretrieved_technology(monkeypatch):
     """기술 근거가 하나도 없으면 기술별 질의로 1회 보완한다."""
     queued(monkeypatch, maturity, {"TurboQuant": [[TQ], []], "ITME": [[], [], [ITME]]})
+    drafts(monkeypatch, {"turboquant": f"TRL 4 [{TQ_ID}].", "itme": f"TRL 3 [{ITME_ID}].", "gaps": []})
+
+    out = maturity.maturity({"run_id": "r4-test", "run_config": {}})
+
+    assert out["trace"][0]["supplemental_searches"] == 1
+    assert out["maturity"]["status"] == "completed"
+
+
+def test_maturity_supplements_when_only_comparison_chunks_mention_a_technology(monkeypatch):
+    """보완 여부도 evaluate 와 같은 기준(scope=direct)으로 본다. 비교군만 있으면 미확보다."""
+    comparison = chunk("eeeeeeeeeeee", applies_to=["ITME"], scope="comparison")
+    queued(monkeypatch, maturity, {"TurboQuant": [[TQ], []], "ITME": [[comparison], [], [ITME]]})
     drafts(monkeypatch, {"turboquant": f"TRL 4 [{TQ_ID}].", "itme": f"TRL 3 [{ITME_ID}].", "gaps": []})
 
     out = maturity.maturity({"run_id": "r4-test", "run_config": {}})

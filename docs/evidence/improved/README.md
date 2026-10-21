@@ -18,11 +18,10 @@ mock·합성 데이터가 아니다. 실행 원본은 `../baseline/20261021-1211
 `data/manifest.json` 2026-10-21판(두 실행 동일 — PDF 6건은 9월과 해시 동일, 웹 4건은 원문이 바뀌어 재수집).
 기준선은 5분 4초 · LLM 호출 7회(캐시 적중 0) · 토큰 89,684(입력 59,757 / 출력 29,927).
 
-포함: `run.json` · `state.json` · `trace.jsonl` · `review.csv` · `stakeholder-trace.jsonl` ·
-`stakeholder-validation.json` · `web/events.jsonl`. **제외:** `web/snapshots/`(제3자 원문 HTML, interface ③ —
-운영 스냅샷은 Git에 넣지 않는다), `web/search/`, 그리고 `state.json`에 이미 든 사본 — `draft.json`,
-`stakeholder.json`(= `state.stakeholder`), `web/manifest.json`(출처·근거는 `state.stakeholder`, 수집 실패·검색은
-`web/events.jsonl`).
+포함: `run.json` · `state.json` · `trace.jsonl` · `review.csv` · `web/events.jsonl`.
+**제외:** `web/snapshots/`(제3자 원문 HTML, interface ③ — 운영 스냅샷은 Git에 넣지 않는다), `web/search/`,
+그리고 `state.json`에 이미 든 사본 — `draft.json`, `web/manifest.json`(출처·근거는 `state.stakeholder`,
+수집 실패·검색은 `web/events.jsonl`).
 
 ### 기준선 노드별 결과
 

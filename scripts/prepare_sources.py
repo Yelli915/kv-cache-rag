@@ -14,12 +14,16 @@ sources.json 에 적힌 출처를 내려받아
 사용법:
     uv run python scripts/prepare_sources.py            # 없는 원문만 받고 해시 검증
     uv run python scripts/prepare_sources.py --refresh  # 원문 재수집 + 매니페스트 갱신
+
+실패(다운로드·해시 불일치·PDF 쪽수)가 하나라도 있으면 매니페스트를 덮어쓰지 않는다 —
+일부만 남은 매니페스트로 색인·분량 판정이 돌지 않게.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from datetime import date
@@ -39,12 +43,18 @@ def sha256(path: Path) -> str:
 
 
 def download(url: str, dest: Path) -> None:
+    """임시 파일에 받은 뒤 교체한다. 실패해도 기존 원문은 그대로 남는다."""
     dest.parent.mkdir(parents=True, exist_ok=True)
-    with requests.get(url, headers={"User-Agent": UA}, stream=True, timeout=60) as r:
-        r.raise_for_status()
-        with dest.open("wb") as f:
-            for chunk in r.iter_content(1 << 16):
-                f.write(chunk)
+    tmp = dest.with_name(dest.name + ".part")
+    try:
+        with requests.get(url, headers={"User-Agent": UA}, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            with tmp.open("wb") as f:
+                for chunk in r.iter_content(1 << 16):
+                    f.write(chunk)
+        os.replace(tmp, dest)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def pdf_pages(path: Path) -> int:
@@ -75,12 +85,15 @@ def main() -> int:
     spec = json.loads((ROOT / "sources.json").read_text(encoding="utf-8"))
     cpp = spec["chars_per_page_a4_95pt"]
     budget = spec["page_budget"]
+    prev = ({e["id"]: e for e in json.loads(MANIFEST.read_text(encoding="utf-8"))["sources"]}
+            if MANIFEST.exists() else {})
 
     entries, failures = [], []
     for s in spec["sources"]:
         ext = "pdf" if s["type"] == "pdf" else "html"
         raw_path = RAW / f"{s['id']}.{ext}"
 
+        old = prev.get(s["id"], {})
         if args.refresh or not raw_path.exists():
             try:
                 print(f"[get ] {s['id']:<26} {s['url']}")
@@ -93,13 +106,26 @@ def main() -> int:
         entry = {k: s[k] for k in
                  ("id", "collection", "title", "url", "type", "language",
                   "applies_to", "perspectives", "scope") if k in s}
+        digest = sha256(raw_path)
+        # data/raw 는 커밋하지 않으므로 새 클론의 기본 실행도 원문을 받는다 — 그때도
+        # 커밋된 매니페스트 해시와 맞아야 한다. 원문 변경은 --refresh 일 때만 받아들인다.
+        if old.get("sha256") and old["sha256"] != digest:
+            if not args.refresh:
+                print(f"[FAIL] {s['id']}: 해시 불일치 (매니페스트 {old['sha256'][:12]} ≠ "
+                      f"원문 {digest[:12]})", file=sys.stderr)
+                failures.append({"id": s["id"], "url": s["url"], "error": "sha256 mismatch"})
+                continue
+            print(f"[chg ] {s['id']}: 원문이 바뀌었다 — chunk_id 가 달라져 goldenset 재라벨링 필요")
         entry.update({
             "local_path": str(raw_path.relative_to(ROOT)),
-            "sha256": sha256(raw_path),
+            "sha256": digest,
             "bytes": raw_path.stat().st_size,
-            "retrieved_at": date.today().isoformat(),
+            # --refresh 가 아니면 같은 원문(해시 일치)이므로 기존 수집일을 유지한다.
+            "retrieved_at": (date.today().isoformat() if args.refresh
+                             else old.get("retrieved_at", date.today().isoformat())),
         })
-        for k in ("version", "publisher", "published_at", "landing", "note", "excerpt_only"):
+        for k in ("version", "publisher", "published_at", "landing", "note", "excerpt_only",
+                  "excerpt_pages"):
             if k in s:
                 entry[k] = s[k]
 
@@ -109,8 +135,9 @@ def main() -> int:
                 entry["pages_counted"] = entry["pdf_pages"]
                 entry["page_basis"] = "pdf_actual"
             except Exception as e:                       # noqa: BLE001
-                print(f"[warn] {s['id']} 페이지 수 실패: {e}", file=sys.stderr)
-                entry["page_basis"] = "unknown"
+                print(f"[FAIL] {s['id']} 페이지 수 실패: {e}", file=sys.stderr)
+                failures.append({"id": s["id"], "url": s["url"], "error": f"pdf pages: {e}"})
+                continue
         else:
             text = html_to_text(raw_path)
             txt_path = RAW / f"{s['id']}.txt"
@@ -129,6 +156,13 @@ def main() -> int:
         by_coll[e["collection"]] = round(
             by_coll.get(e["collection"], 0) + e.get("pages_counted", 0), 1)
 
+    if failures:
+        for f in failures:
+            print(f"  [FAIL] {f['id']}: {f['error']}", file=sys.stderr)
+        print(f"실패 {len(failures)}건 — 매니페스트를 갱신하지 않았다 ({MANIFEST.relative_to(ROOT)})",
+              file=sys.stderr)
+        return 1
+
     manifest = {
         "generated_at": date.today().isoformat(),
         "chars_per_page_a4_95pt": cpp,
@@ -137,7 +171,6 @@ def main() -> int:
         "within_budget": total <= budget,
         "pages_by_collection": by_coll,
         "source_count": len(entries),
-        "failures": failures,
         "sources": entries,
     }
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
@@ -148,11 +181,9 @@ def main() -> int:
         print(f"  {c:<14} {p:>7} 쪽")
     print(f"  {'합계':<13} {total:>7} 쪽 / 한도 {budget}쪽  "
           f"{'OK' if total <= budget else '초과!'}")
-    if failures:
-        print(f"  실패 {len(failures)}건 — manifest.json 의 failures 확인")
     print("=" * 58)
     print(f"매니페스트: {MANIFEST.relative_to(ROOT)}")
-    return 1 if failures else 0
+    return 0
 
 
 if __name__ == "__main__":

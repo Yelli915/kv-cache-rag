@@ -1,6 +1,7 @@
-"""R4·R5 이행 전에 그래프를 끝까지 돌리기 위한 mock 노드 — 담당: R1
+"""그래프 배선 검증용 mock 노드 — 담당: R1 (`tests/test_r1_graph.py`, `scripts/r1_smoke.py`)
 
 형식은 `src/schema.py` 계약 그대로다. LLM·검색을 타지 않으므로 실행 경로 검증에만 쓴다.
+실물 노드가 맞물리는지는 `tests/test_integration_graph.py` 가 본다.
 여기서 나오는 값은 합성 데이터이며 평가 결과가 아니다.
 """
 

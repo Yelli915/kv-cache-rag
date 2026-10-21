@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from src.schema import Assessment, Claim, Event, Gap, Source
 
-R3 = Path("tests/fixtures/r3")
+R3 = Path(__file__).parent / "fixtures" / "r3"
 
 
 def load(name):

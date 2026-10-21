@@ -33,9 +33,9 @@
       "allowed_uses": [
         "stakeholder"
       ],
-      "snapshot_path": "docs/evidence/r3/runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
+      "snapshot_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
       "sha256": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6",
-      "body_path": "docs/evidence/r3/runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.txt",
+      "body_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.txt",
       "body_sha256": "20b9c96e0f4308e20af7d03898f3d375ff93abbc1cadf2f418ce27bd3cd18f01"
     }
   ],
@@ -50,7 +50,7 @@
       "allowed_uses": [
         "stakeholder"
       ],
-      "snapshot_path": "docs/evidence/r3/runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
+      "snapshot_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
       "sha256": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6"
     },
     {
@@ -63,7 +63,7 @@
       "allowed_uses": [
         "stakeholder"
       ],
-      "snapshot_path": "docs/evidence/r3/runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
+      "snapshot_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
       "sha256": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6"
     },
     {
@@ -76,7 +76,7 @@
       "allowed_uses": [
         "stakeholder"
       ],
-      "snapshot_path": "docs/evidence/r3/runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
+      "snapshot_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
       "sha256": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6"
     }
   ],

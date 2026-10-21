@@ -39,6 +39,25 @@ def assessment(role, text=None, *, run_id="r5-test"):
     }
 
 
+class FakeLLM:
+    """구조화 출력 LLM 자리. 받은 스키마와 마지막 프롬프트를 붙잡아 둔다.
+
+    result 가 없으면 스키마의 빈 인스턴스를 돌려준다(필수 필드 검증 없이).
+    """
+
+    def __init__(self, result=None):
+        self.result, self.schema, self.prompt, self.prompts = result, None, None, []
+
+    def with_structured_output(self, schema):
+        self.schema = schema
+        return self
+
+    def invoke(self, prompt):
+        self.prompt = prompt
+        self.prompts.append(prompt)
+        return self.result if self.result is not None else self.schema.model_construct()
+
+
 def fill_review(path, verdict, reviewer="권예리"):
     """review.csv 의 판정 칸을 채운다. verdict 는 문자열 또는 row -> 문자열."""
     rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))

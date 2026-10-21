@@ -10,7 +10,6 @@
     "context": 40
   },
   "source_count": 10,
-  "failures": [],
   "sources": [
     {
       "id": "turboquant-paper",
@@ -265,6 +264,10 @@
       "landing": "https://arxiv.org/abs/2412.19442",
       "note": "2차 자료. 분류 체계(1~32쪽, Related Work 포함)만 발췌하고 참고문헌(33~40쪽)은 색인에서 제외한다. 도메인 맥락에만 사용하며 성능 주장 근거로 인용하지 않는다.",
       "excerpt_only": true,
+      "excerpt_pages": [
+        1,
+        32
+      ],
       "pdf_pages": 40,
       "pages_counted": 40,
       "page_basis": "pdf_actual"

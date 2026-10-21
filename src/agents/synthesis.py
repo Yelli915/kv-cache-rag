@@ -67,7 +67,7 @@ TRL, 시장성, 이해관계자, 도메인 적용 평가 결과를 종합한다.
    확인되지 않았다면 결합 효과는 실측 결과처럼 쓰지 않는다.
 9. combination_hypothesis는 개별 기술의 확인된 특성으로부터 도출한
    가설임을 명확히 표현한다.
-{fix}
+
 
 # TRL 평가
 {maturity}
@@ -89,37 +89,33 @@ TRL, 시장성, 이해관계자, 도메인 적용 평가 결과를 종합한다.
 """
 
 
-FIX = """
-# 재작성 지시
-
-앞선 검증 단계에서 아래 오류가 확인되었다.
-
-{errors}
-
-오류가 있는 근거에 의존한 내용을 확정 사실처럼 사용하지 않는다.
-근거가 남지 않는 항목은 삭제하거나 근거 공백으로 유지한다.
-"""
-
-
 def synthesis(state) -> dict:
-    """종합 결과와, 합류분에 자기 공백을 이어 붙인 gaps 를 반환한다(§7 순차 병합)."""
-    errors = (state.get("validation") or {}).get("errors") or []
+    """종합 결과와, 합류분에 자기 공백을 이어 붙인 gaps 를 반환한다(§7 순차 병합).
 
+    구조화 출력이 깨지면 `synthesis.error` 에 사유를 남긴다. `validate.check` 가 이를 오류로
+    올려 `final_check` 가 fail 로 보낸다 — 예외로 그래프를 죽이면 사유 파일이 남지 않는다.
+    """
     merged_gaps = list(state.get("gaps") or [])          # collect_evidence 가 합류시킨 공백
     # §6 은 종합에게 공백을 "정리" 하라고 한다. 그런데 모델은 노드가 이미 보고한 공백을
     # 자기 말로 다시 쓴다. 문자열 완전 일치로는 못 걸러서 유사도로 본다.
     seen = [gap.get("item", "") for gap in merged_gaps]
 
-    result = get_llm().with_structured_output(Synthesis).invoke(
-        PROMPT.format(
-            fix=FIX.format(errors=errors) if errors else "",
-            research=_claims_text(state.get("research") or {}),
-            gaps="\n".join(f"- {gap.get('technology', '')} {gap.get('item', '')}: "
-                            f"{gap.get('reason', '')}" for gap in merged_gaps) or "(없음)",
-            **{perspective: _claims_text(state.get(perspective) or {})
-               for perspective in PERSPECTIVES},
-        )
+    prompt = PROMPT.format(
+        research=_claims_text(state.get("research") or {}),
+        gaps="\n".join(f"- {gap.get('technology', '')} {gap.get('item', '')}: "
+                        f"{gap.get('reason', '')}" for gap in merged_gaps) or "(없음)",
+        **{perspective: _claims_text(state.get(perspective) or {})
+           for perspective in PERSPECTIVES},
     )
+    try:
+        result = get_llm().with_structured_output(Synthesis).invoke(prompt)
+    except Exception as exc:             # 파서·API 오류 모두 — common._try_draft 와 같은 처리
+        result, error = None, f"{type(exc).__name__}: {exc}"[:300]
+    else:
+        error = "" if result is not None else "빈 구조화 출력"
+    if result is None:
+        return {"synthesis": {"error": error}, "gaps": merged_gaps,
+                "trace": [{"node": "synthesis", "status": "failed", "attempt": 1, "error": error}]}
 
     # 종합이 새로 지목한 공백만 Gap 으로 덧붙인다. 앞 단계 공백은 그대로 유지한다.
     for item in result.gaps:
@@ -142,6 +138,5 @@ def synthesis(state) -> dict:
             "agreements": len(result.agreements),
             "conflicts": len(result.conflicts),
             "gaps": len(merged_gaps),
-            "rewrite": bool(errors),
         }],
     }

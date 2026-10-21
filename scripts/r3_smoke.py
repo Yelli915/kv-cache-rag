@@ -1,6 +1,6 @@
 """Offline R3 handoff evidence. All web/LLM content is explicitly synthetic.
 
-    python -m scripts.r3_smoke --root /tmp/kv-r3-smoke
+    uv run python -m scripts.r3_smoke --root /tmp/kv-r3-smoke
 
 FAISS retrieval, HTML extraction, hash checks, role guards, node validation and
 file persistence are real. Only embedding vectors and network/LLM I/O are fixtures.
@@ -8,8 +8,13 @@ An existing root is rejected rather than deleting or mixing earlier evidence.
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 from unittest.mock import patch
+
+# 'python scripts/r3_smoke.py' 로 직접 실행해도 src·tests 를 찾게 한다.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import FAISS
@@ -30,7 +35,7 @@ class FixtureEmbeddings(Embeddings):
 
 
 def run(root):
-    root = Path(root).resolve()
+    root = Path(root)      # resolve 하지 않는다 — 증빙에 로컬 절대경로를 남기지 않기 위해
     if root.exists():
         raise ValueError('use a new smoke root; previous evidence is not overwritten')
     root.mkdir(parents=True)

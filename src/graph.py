@@ -151,7 +151,6 @@ def collect_evidence(state) -> dict:
         gaps.extend(assessment["gaps"])
 
     if errors:
-        save_json(run_dir(state) / "merge-errors.json", {"errors": errors})
         raise MergeConflict("; ".join(errors))
 
     return {"source_registry": sources, "evidence_registry": evidence, "gaps": gaps,
@@ -193,12 +192,11 @@ def save_draft(state) -> dict:
 
 
 def fail(state) -> dict:
-    """미해결 오류. 오류와 로그를 저장하고 제출용 출력을 막는다(§8).
+    """미해결 오류. 오류를 trace 에 남기고 제출용 출력을 막는다(§8).
 
     `report` 를 쓰지 않는다 — 실패한 실행이 보고서 자리를 차지하면 안 된다.
     """
     validation = state.get("validation") or {}
-    save_json(run_dir(state) / "validation-errors.json", validation)
     return {"trace": [event("fail", "failed", errors=validation.get("errors", []))]}
 
 

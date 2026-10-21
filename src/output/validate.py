@@ -230,6 +230,10 @@ def check(state) -> dict:
         errors.extend(_structured_errors(node_name, assessment, current_run_id, numeric))
 
     # conflicts == [] 는 정상일 수 있으므로 오류로 처리하지 않는다.
+    synthesis_error = (state.get("synthesis") or {}).get("error")
+    if synthesis_error:
+        errors.append({"node": "synthesis", "kind": "종합 생성 실패", "ids": [],
+                       "error": synthesis_error})
 
     return {
         "validation": {

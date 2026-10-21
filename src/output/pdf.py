@@ -14,7 +14,6 @@ PDF 의존성: `uv sync --extra pdf` (macOS 는 `brew install pango`).
 from pathlib import Path
 
 from src.state import run_dir
-from src.tools.web_store import save_json
 
 FINAL_FILENAME = "RAG-Output_판교_8반_권수진+권예리+김민+박인기+정승원.pdf"
 
@@ -145,7 +144,7 @@ def publish(state) -> dict:
     `runs/<run_id>/final/` 에 둔다.
 
     PDF 의존성(weasyprint·pango)이 없어도 그래프를 죽이지 않는다. 그 사실을
-    submission.json 과 trace 에 남기고 Markdown 경로만 돌려준다.
+    trace 에 남기고 Markdown 경로만 돌려준다.
     """
     directory = run_dir(state)
     markdown_path = directory / "report.md"
@@ -160,8 +159,6 @@ def publish(state) -> dict:
         # 없으면 OSError 가 난다. PDF 하나 때문에 실행 전체를 버리지 않는다.
         result = _result(f"{type(exc).__name__}: {exc}".strip()[:300],
                          checks=quality_checks(state.get("report", "")))
-
-    save_json(directory / "submission.json", result)
 
     return {
         "report_paths": [str(markdown_path)] + ([result["path"]] if result["generated"] else []),

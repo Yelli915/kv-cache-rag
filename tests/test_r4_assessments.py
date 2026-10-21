@@ -14,12 +14,11 @@ NODES = [(research.research, "research"), (maturity.maturity, "maturity"),
          (market.market, "market"), (domain.domain_assessment, "domain_assessment")]
 STATE = {"run_id": "r4-test", "run_config": {"domain": "데이터센터/클라우드",
                                              "technologies": ["TurboQuant", "ITME"]}}
-MARKET_TEXT = (
-    f"## ① 시장 규모/성장성\n정량 리포트 미확인 [{TQ_ID}].\n\n"
-    f"## ② 상용화/채택 현황\n발표 단계, 배포 확인 미확인 [{ITME_ID}].\n\n"
-    f"## ③ 생태계 지지\n일반 CXL 근거이며 추론 특화 여부 미확인 [{ITME_ID}].\n\n"
-    "근거 공백: TurboQuant 서빙 처리량 미확인 | 결합 실측 자료 없음"
-)
+MARKET_DRAFT = {"size": f"정량 리포트 미확인 [{TQ_ID}].",
+                "adoption": f"발표 단계, 배포 확인 미확인 [{ITME_ID}].",
+                "ecosystem": f"일반 CXL 근거이며 추론 특화 여부 미확인 [{ITME_ID}].",
+                "gaps": [{"technology": "TurboQuant", "item": "서빙 처리량 미확인"},
+                         {"technology": "both", "item": "결합 실측 자료 없음"}]}
 DRAFT = {"turboquant": f"TurboQuant 는 3.5비트 양자화를 보고한다 [{TQ_ID}].",
          "itme": f"ITME 는 NVMe-oF 대비 1.80배 처리량을 보고한다 [{ITME_ID}].",
          "hypothesis": f"두 기술의 결합은 실측 근거가 없다 [{TQ_ID}].",
@@ -30,9 +29,8 @@ DRAFT = {"turboquant": f"TurboQuant 는 3.5비트 양자화를 보고한다 [{TQ
 def stub(monkeypatch):
     for module in (research, maturity, market, domain):
         monkeypatch.setattr(module, "bind_document_search", lambda *a, **k: search(PAPERS))
-    monkeypatch.setattr(market, "run_node", lambda *a: MARKET_TEXT)
-    monkeypatch.setattr(common, "draft",
-                        lambda *a, schema=common.Draft, **k: schema.model_validate(DRAFT))
+    monkeypatch.setattr(common, "draft", lambda *a, schema=common.Draft, **k: schema.model_validate(
+        MARKET_DRAFT if schema is market.MarketDraft else DRAFT))
 
 
 @pytest.mark.parametrize("node,key", NODES, ids=[key for _, key in NODES])

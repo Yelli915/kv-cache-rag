@@ -18,7 +18,7 @@ from src.graph import build_graph, invoke
 from src.output import pdf
 from src.state import ASSESSMENT_NODES
 from src.schema import Assessment, Synthesis
-from tests.helpers import PAPERS, fill_review, search
+from tests.helpers import PAPERS, FakeLLM, fill_review, search
 
 ECOSYSTEM = [
     {"chunk_id": "cccccccccccc", "source_id": "cxl-report", "collection": "ecosystem",
@@ -34,12 +34,10 @@ PAPERS_DRAFT = {
     "itme": "ITME 는 NVMe-oF 대비 1.80배 처리량을 보고한다 [bbbbbbbbbbbb].",
     "gaps": [{"technology": "both", "item": "결합 실측 자료 없음"}],
 }
-MARKET_TEXT = (
-    "## ① 시장 규모/성장성\n정량 리포트 미확인 [dddddddddddd].\n\n"
-    "## ② 상용화/채택 현황\n발표 단계, 배포 확인 미확인 [cccccccccccc].\n\n"
-    "## ③ 생태계 지지\n일반 CXL 근거이며 추론 특화 여부 미확인 [cccccccccccc].\n\n"
-    "근거 공백: TurboQuant 운영 배포 사례 미확인"
-)
+MARKET_DRAFT = {"size": "정량 리포트 미확인 [dddddddddddd].",
+                "adoption": "발표 단계, 배포 확인 미확인 [cccccccccccc].",
+                "ecosystem": "일반 CXL 근거이며 추론 특화 여부 미확인 [cccccccccccc].",
+                "gaps": [{"technology": "TurboQuant", "item": "운영 배포 사례 미확인"}]}
 
 
 def stakeholder_stub(state):
@@ -65,19 +63,12 @@ def stakeholder_stub(state):
     }
 
 
-class FakeSynthesis:
-    """synthesis 의 구조화 출력 LLM 자리."""
-
-    def with_structured_output(self, schema):
-        return self
-
-    def invoke(self, prompt):
-        return Synthesis(
-            agreements=["두 기술 모두 KV cache 메모리 병목을 완화한다."],
-            conflicts=[{"perspective": "TRL", "why": "실증 환경의 범위가 다르다"}],
-            gaps=["두 기술의 결합 실측 자료 미확인"],
-            combination_hypothesis="개별 근거에서 도출한 추론이며 실측 결과가 아니다.",
-        )
+SYNTHESIS = Synthesis(
+    agreements=["두 기술 모두 KV cache 메모리 병목을 완화한다."],
+    conflicts=[{"perspective": "TRL", "why": "실증 환경의 범위가 다르다"}],
+    gaps=["두 기술의 결합 실측 자료 미확인"],
+    combination_hypothesis="개별 근거에서 도출한 추론이며 실측 결과가 아니다.",
+)
 
 
 @pytest.fixture
@@ -86,14 +77,13 @@ def wired(monkeypatch, tmp_path):
                            (market, ECOSYSTEM)):
         monkeypatch.setattr(module, "bind_document_search",
                             lambda *a, _chunks=chunks, **k: search(_chunks))
-    monkeypatch.setattr(market, "run_node", lambda *a, **k: MARKET_TEXT)
-    monkeypatch.setattr(common, "draft",
-                        lambda *a, schema=common.Draft, **k: schema.model_validate(PAPERS_DRAFT))
+    monkeypatch.setattr(common, "draft", lambda *a, schema=common.Draft, **k: schema.model_validate(
+        MARKET_DRAFT if schema is market.MarketDraft else PAPERS_DRAFT))
 
     from src.agents import report as report_module
     from src.agents import synthesis as synthesis_module
 
-    monkeypatch.setattr(synthesis_module, "get_llm", lambda: FakeSynthesis())
+    monkeypatch.setattr(synthesis_module, "get_llm", lambda: FakeLLM(SYNTHESIS))
     monkeypatch.setattr(report_module, "model_name", lambda: "test-model")
     monkeypatch.setattr("src.rag.index.build", lambda: {"manifest": [{"id": "turboquant-paper"}]})
     # 원문(data/raw/)은 저작권 문제로 커밋하지 않는다. 대신 tmp 원문과 해시가 맞는 매니페스트를
@@ -182,7 +172,7 @@ def test_resume_after_review_produces_the_submission(wired, tmp_path):
     assert "## REFERENCE" in final["report"]
     assert final["report_paths"][0].endswith("report.md")
     assert (directory / "final").is_dir()
-    assert json.loads((directory / "submission.json").read_text())["generated"] is True
+    assert final["report_paths"][-1].endswith(".pdf")
 
 
 def test_rejected_claim_never_reaches_the_report(wired, tmp_path):

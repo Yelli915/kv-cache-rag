@@ -7,17 +7,14 @@ import pytest
 
 from src.agents import synthesis as node
 from src.schema import Synthesis
+from tests import helpers
+from tests.helpers import FakeLLM
 
 
-def assessment(role, *, status="partial"):
-    return {
-        "status": status,
-        "claims": [{"claim_id": f"claim-{role}", "text": f"{role} 주장", "technology": "ITME",
-                    "kind": "fact", "evidence_ids": ["e-1"]}],
-        "sources": [], "evidence": [],
-        "gaps": [{"role": role, "technology": "TurboQuant", "item": f"{role} 공백",
-                  "reason": "근거 미확인"}],
-    }
+def assessment(role):
+    """종합은 status·claims·gaps 만 읽는다. 공백이 있는 partial 로 둔다."""
+    return helpers.assessment(role) | {"status": "partial", "gaps": [
+        {"role": role, "technology": "TurboQuant", "item": f"{role} 공백", "reason": "근거 미확인"}]}
 
 
 STATE = {
@@ -33,29 +30,14 @@ STATE = {
 }
 
 
-class FakeLLM:
-    """구조화 출력을 흉내내고 마지막 프롬프트를 붙잡아 둔다."""
-
-    def __init__(self, result):
-        self.result = result
-        self.prompt = None
-
-    def with_structured_output(self, schema):
-        assert schema is Synthesis, "공용 schema 를 써야 한다"
-        return self
-
-    def invoke(self, prompt):
-        self.prompt = prompt
-        return self.result
-
-
 @pytest.fixture
 def llm(monkeypatch):
     fake = FakeLLM(Synthesis(agreements=["공통 사실"], conflicts=[],
                              gaps=["결합 실측 자료 없음"],
                              combination_hypothesis="추론임을 명시한 결합 가설"))
     monkeypatch.setattr(node, "get_llm", lambda: fake)
-    return fake
+    yield fake
+    assert fake.schema is Synthesis, "공용 schema 를 써야 한다"
 
 
 def test_writes_synthesis_and_merged_gaps(llm):
@@ -91,13 +73,24 @@ def test_reads_claims_not_the_removed_text_field(llm):
     assert "research 주장" in llm.prompt      # 기술 조사도 종합 입력이다 (§6)
 
 
-def test_rewrite_uses_the_validation_field(llm):
-    """검증 오류는 validation.errors 에 있다. validation_errors 는 State 필드가 아니다."""
-    state = STATE | {"validation": {"errors": [{"node": "market", "kind": "없는 인용 ID"}]}}
-    update = node.synthesis(state)
+def test_broken_output_fails_with_a_reason_instead_of_raising(monkeypatch):
+    """구조화 출력이 깨져도 그래프를 죽이지 않는다. 사유가 validation 오류로 올라가 fail 로 간다."""
+    from src.graph import final_check
+    from src.output import validate
 
-    assert "재작성 지시" in llm.prompt
-    assert update["trace"][0]["rewrite"] is True
+    class Broken(FakeLLM):
+        def invoke(self, prompt):
+            raise ValueError("tool call 형식 오류")
+
+    monkeypatch.setattr(node, "get_llm", lambda: Broken(None))
+    update = node.synthesis(STATE)
+
+    assert update["trace"][0]["status"] == "failed"
+    assert "tool call 형식 오류" in update["synthesis"]["error"]
+    assert update["gaps"] == STATE["gaps"]                  # 합류분 공백은 잃지 않는다
+    errors = validate.check(STATE | update)["validation"]["errors"]
+    assert [e["kind"] for e in errors if e["node"] == "synthesis"] == ["종합 생성 실패"]
+    assert final_check(STATE | update | {"validation": {"errors": errors}})["run_status"] == "failed"
 
 
 def test_no_conflict_is_allowed(llm):

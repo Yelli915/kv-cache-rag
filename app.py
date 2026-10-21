@@ -17,11 +17,7 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-# 설정·매니페스트·출력 경로가 전부 저장소 루트 기준 상대경로라 작업 디렉토리를 옮긴다.
 _ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(_ROOT))
-os.chdir(_ROOT)
-
 
 from dotenv import load_dotenv
 from langchain_core.callbacks import get_usage_metadata_callback
@@ -37,12 +33,20 @@ def new_run_id() -> str:
 
 
 def start_run(state) -> Path:
-    """실행 디렉토리를 만들고 running 을 먼저 기록한다. 중간에 죽어도 흔적이 남는다."""
+    """실행 디렉토리를 만들고 running 을 먼저 기록한다. 중간에 죽어도 흔적이 남는다.
+
+    재개면 앞 구간의 기록(토큰·캐시 적중·종료 시각)을 `legs` 로 옮겨 둔다. 덮어쓰면 검토
+    대기 전까지 쓴 비용이 run.json 에서 사라진다(§6).
+    """
     directory = run_dir(state)
     directory.mkdir(parents=True, exist_ok=True)
-    save_json(directory / "run.json", {
+    path = directory / "run.json"
+    previous = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    legs = previous.pop("legs", [])
+    save_json(path, {
         "run_id": state["run_id"], "run_config": state["run_config"],
         "run_status": "running", "started_at": utcnow(),
+        **({"legs": [*legs, previous]} if previous else {}),
     })
     return directory
 
@@ -92,6 +96,9 @@ def finish(state, status, errors=(), usage=None) -> str:
 
 
 def main():
+    # 설정·매니페스트·출력 경로가 전부 저장소 루트 기준 상대경로라 작업 디렉토리를 옮긴다.
+    # import 시점이 아니라 여기서 옮긴다 — app 을 import 하는 스크립트·테스트의 cwd 를 바꾸지 않는다.
+    os.chdir(_ROOT)
     p = argparse.ArgumentParser()
     p.add_argument("--domain", default="데이터센터/클라우드 (대규모 동시성, 비용 민감)")
     p.add_argument("--resume", metavar="RUN_ID", help="검토 대기로 멈춘 실행의 draft.json 을 이어서 돌린다")
@@ -124,7 +131,7 @@ def main():
         try:
             final = invoke(build_graph(start=start), state)
         except MergeConflict as exc:
-            # 근거가 서로 어긋났다. merge-errors.json 은 collect_evidence 가 이미 남겼다.
+            # 근거가 서로 어긋났다. 오류 목록은 run.json 의 errors 에 남는다.
             print(f"실패: 근거 병합 오류 — {exc}")
             return finish(state, "failed", [str(exc)], usage=usage)
         except Exception as exc:
@@ -156,9 +163,12 @@ def main():
         if gaps:
             print(f"  평가 보류 {len(gaps)}건 — 보고서 §6 한계 참고 (run_status={status})")
         if not any(str(p).endswith(".pdf") for p in final.get("report_paths") or []):
-            print(f"  제출본 PDF 미생성 — 사유는 {directory/'submission.json'}")
+            reason = next((t.get("reason") for t in reversed(final.get("trace") or [])
+                           if t.get("node") == "publish"), "")
+            print(f"  제출본 PDF 미생성 — {reason}")
     return status
 
 
 if __name__ == "__main__":
-    main()
+    # 검토 대기(partial)는 정상 종료다. failed 만 셸·CI 에 실패로 알린다.
+    sys.exit(1 if main() == "failed" else 0)

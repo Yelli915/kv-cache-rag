@@ -82,7 +82,9 @@ def maturity(state: Dict[str, Any]) -> Dict[str, Any]:
         return [c for q in queries for c in doc_search.invoke({"query": q, "technology": tech, "top_k": 4})]
 
     chunks = unique(c for tech in TECHS for c in search(tech, BASE_QUERIES))
-    missing = [t for t in TECHS if not any(t in c.get("applies_to", []) for c in chunks)]
+    # evaluate 와 같은 기준 — scope=direct 청크만 그 기술을 확보한 것으로 친다
+    missing = [t for t in TECHS if not any(c.get("scope") == "direct" and t in c.get("applies_to", [])
+                                           for c in chunks)]
     chunks = unique(chunks + [c for t in missing for c in search(t, [SUPPLEMENT[t]])])
 
     return evaluate(node="maturity", role="maturity", run_id=state.get("run_id", "default_run"),
