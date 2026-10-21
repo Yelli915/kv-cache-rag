@@ -20,57 +20,15 @@ review_result와 reviewer는 사람이 직접 입력한다.
 import csv
 import hashlib
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from src.output import validate
-from src.state import run_dir
+from src.state import ASSESSMENT_NODES, run_dir
+from src.tools.web_store import utcnow
 
-
-REVIEW_NODES = [
-    "research",
-    "maturity",
-    "market",
-    "stakeholder",
-    "domain_assessment",
-]
-
-
-def _evidence_map(assessment: dict) -> dict:
-    """Assessment 내부 Evidence를 evidence_id 기준 dict로 만든다."""
-    return {
-        evidence["evidence_id"]: evidence
-        for evidence in assessment.get("evidence", [])
-        if evidence.get("evidence_id")
-    }
-
-
-def _source_map(assessment: dict) -> dict:
-    """Assessment 내부 Source를 source_id 기준 dict로 만든다."""
-    return {
-        source["source_id"]: source
-        for source in assessment.get("sources", [])
-        if source.get("source_id")
-    }
-
-
-def _claim_text(claim: dict) -> str:
-    """Claim schema의 실제 필드명이 달라져도 기본적으로 대응한다."""
-    return (
-        claim.get("text")
-        or claim.get("claim")
-        or claim.get("statement")
-        or ""
-    )
-
-
-def _evidence_text(evidence: dict) -> str:
-    """논문/웹 Evidence의 원문 구절을 공통 처리한다."""
-    return (
-        evidence.get("quote")
-        or evidence.get("text")
-        or ""
-    )
+FIELDS = ["claim_id", "node", "technology", "claim_kind", "claim_text", "evidence_id",
+          "source_id", "source_type", "location", "evidence_quote",
+          "review_result", "reviewer", "review_comment", "carried_from"]
 
 
 def _source_location(evidence: dict, source: dict) -> str:
@@ -85,69 +43,32 @@ def _source_location(evidence: dict, source: dict) -> str:
 
 
 def build_review_rows(state: dict) -> list[dict]:
-    """State의 Assessment들을 사람이 검토할 수 있는 row로 변환한다."""
+    """State의 Assessment들을 사람이 검토할 수 있는 row로 변환한다. 한 Claim 은 근거 수만큼 행을 갖는다."""
     rows = []
-
-    for node_name in REVIEW_NODES:
+    for node_name in ASSESSMENT_NODES:
         assessment = state.get(node_name) or {}
+        evidence_by_id = {e["evidence_id"]: e for e in assessment.get("evidence") or []
+                          if e.get("evidence_id")}
+        source_by_id = {s["source_id"]: s for s in assessment.get("sources") or [] if s.get("source_id")}
 
-        # 아직 구형 {text, citations, gaps} 구조인 노드는 건너뛴다.
-        claims = assessment.get("claims")
-        if not claims:
-            continue
-
-        evidence_by_id = _evidence_map(assessment)
-        source_by_id = _source_map(assessment)
-
-        for claim in claims:
-            claim_id = claim.get("claim_id", "")
-            evidence_ids = claim.get("evidence_ids") or []
-
+        for claim in assessment.get("claims") or []:
+            head = {"claim_id": claim.get("claim_id", ""), "node": node_name,
+                    "technology": claim.get("technology", ""), "claim_kind": claim.get("kind", ""),
+                    "claim_text": claim.get("text", "")}
             # 근거 없는 Claim도 worksheet에 남긴다.
-            if not evidence_ids:
-                rows.append({
-                    "claim_id": claim_id,
-                    "node": node_name,
-                    "technology": claim.get("technology", ""),
-                    "claim_kind": claim.get("kind", ""),
-                    "claim_text": _claim_text(claim),
-                    "evidence_id": "",
-                    "source_id": "",
-                    "source_type": "",
-                    "location": "",
-                    "evidence_quote": "",
-                    "review_result": "",
-                    "reviewer": "",
-                    "review_comment": "",
-                    "carried_from": "",
-                })
-                continue
-
-            for evidence_id in evidence_ids:
+            for evidence_id in claim.get("evidence_ids") or [""]:
                 evidence = evidence_by_id.get(evidence_id, {})
-                source_id = evidence.get("source_id", "")
-                source = source_by_id.get(source_id, {})
-
-                rows.append({
-                    "claim_id": claim_id,
-                    "node": node_name,
-                    "technology": claim.get("technology", ""),
-                    "claim_kind": claim.get("kind", ""),
-                    "claim_text": _claim_text(claim),
+                source = source_by_id.get(evidence.get("source_id", ""), {})
+                rows.append(dict.fromkeys(FIELDS, "") | head | ({
                     "evidence_id": evidence_id,
-                    "source_id": source_id,
+                    "source_id": evidence.get("source_id", ""),
                     # 색인 출처는 source_type 이 없다. 컬렉션이 직접 근거와 인접 생태계를
                     # 가르는 단서라 대신 보여 준다(§5).
                     "source_type": (source.get("source_type") or source.get("type")
                                     or source.get("collection") or ""),
                     "location": _source_location(evidence, source),
-                    "evidence_quote": _evidence_text(evidence),
-                    "review_result": "",
-                    "reviewer": "",
-                    "review_comment": "",
-                    "carried_from": "",
-                })
-
+                    "evidence_quote": evidence.get("quote", ""),
+                } if evidence_id else {}))
     return rows
 
 
@@ -234,7 +155,7 @@ def promote(rows: list[dict], ledger: dict, run_id: str) -> list[str]:
             "reviewer": judged.get("reviewer", ""),
             "review_comment": judged.get("review_comment", ""),
             "run_id": judged.get("carried_from") or run_id,
-            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "reviewed_at": utcnow(),
             # 무엇을 보고 판정했는지 남긴다. 지문만으로는 나중에 확인할 수 없다.
             "claim_id": claim_id,
             "node": judged.get("node", ""),
@@ -256,29 +177,8 @@ def write_review_csv(state: dict, output_path: str | Path, *,
     rows = build_review_rows(state)
     carried = carry_verdicts(rows, ledger) if ledger else []
 
-    fieldnames = [
-        "claim_id",
-        "node",
-        "technology",
-        "claim_kind",
-        "claim_text",
-        "evidence_id",
-        "source_id",
-        "source_type",
-        "location",
-        "evidence_quote",
-        "review_result",
-        "reviewer",
-        "review_comment",
-        "carried_from",
-    ]
-
-    with output_path.open(
-        "w",
-        encoding="utf-8-sig",
-        newline="",
-    ) as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
+    with output_path.open("w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=FIELDS)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -320,7 +220,7 @@ def read_verdicts(path: str | Path) -> dict[str, dict]:
 def _claim_ids(state: dict) -> set[str]:
     return {
         claim.get("claim_id")
-        for node_name in REVIEW_NODES
+        for node_name in ASSESSMENT_NODES
         for claim in (state.get(node_name) or {}).get("claims") or []
         if claim.get("claim_id")
     }

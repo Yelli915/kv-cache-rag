@@ -31,4 +31,3 @@ run:
 limits:
   chunk_tokens: 400
   chunk_overlap: 80
-  chunk_hard_cap: 512         # 임베딩 입력 한도. 초과분은 의미 단위에서 재분할

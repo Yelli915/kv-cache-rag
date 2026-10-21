@@ -2,14 +2,14 @@ import json
 from pathlib import Path
 import pytest
 from src.agents import stakeholder as agent
-from src.tools.web_search import WebEvidenceStore, FetchedPage
-from tests.test_r3_web import HTML
+from src.tools.web_search import WebEvidenceStore
+from tests.test_r3_web import serving
 
 
 def make_store(tmp_path, searcher=None, transport=None):
     return WebEvidenceStore('test-run', root=tmp_path,
         searcher=searcher or (lambda q, k: [{'url': 'https://example.org/a', 'title': 'candidate', 'content': 'UNVERIFIED SNIPPET'}]),
-        transport=transport or (lambda url, **k: FetchedPage(url, 200, {'content-type': 'text/html'}, HTML.encode())))
+        transport=transport or serving())
 
 
 def claim(eid, **changes):
@@ -20,7 +20,6 @@ def claim(eid, **changes):
 
 
 def factory(store, writer):
-    assert hasattr(agent, 'make_stakeholder'), 'new run-bound stakeholder factory is missing'
     return agent.make_stakeholder(store, writer=writer)
 
 
@@ -50,7 +49,7 @@ def test_new_assessment_contains_linked_claims_and_only_own_state_keys(tmp_path)
 
 
 def test_failed_fetch_never_reaches_writer_as_fact(tmp_path):
-    s = make_store(tmp_path, transport=lambda url, **k: FetchedPage(url, 403, {}, b''))
+    s = make_store(tmp_path, transport=serving('', 403))
     out = factory(s, lambda **k: pytest.fail('no evidence means no LLM call'))({'run_id': 'test-run'})
     assert out['stakeholder']['claims'] == []
     assert len(out['stakeholder']['gaps']) == 8
@@ -97,7 +96,6 @@ def test_number_missing_from_evidence_uses_the_repair_and_names_it(tmp_path):
     out = factory(s, writer)({"run_id": "test-run"})
     assert "9배" in calls[1] and len(calls) <= 3      # 초안 · 수치 수정 · 보완 후 재작성
     assert out["stakeholder"]["status"] == "partial"
-
 
 
 def test_claim_still_wrong_on_numbers_after_repair_becomes_a_gap_not_a_failed_run(tmp_path):

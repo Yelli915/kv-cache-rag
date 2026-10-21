@@ -27,7 +27,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8"]
 # PDF 변환은 시스템 라이브러리(pango)가 필요해 기본 설치에서 뺀다.
 # 없어도 파이프라인은 report.md 까지 정상 종료한다.  uv sync --extra pdf
 pdf = ["markdown>=3.6", "weasyprint>=62"]

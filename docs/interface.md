@@ -145,8 +145,8 @@ hits = research_search.invoke({"query": "...", "technology": "ITME", "top_k": 5}
 **이해관계자 전용.** 색인하지 않으므로 200쪽 가드 대상이 아니다.
 
 `WebEvidenceStore(run_id, root="runs", ...)`가 실행별 수집·예산·저장을 소유하고,
-`bind_web_tools(store)`가 두 도구를 반환한다. LLM 입력에 run_id/root를 노출하지 않는다.
-실행 컨텍스트 없이 호출하면 실패하며 **다른 실행의 캐시로 대체하지 않는다.**
+`bind_web_tools(store)`가 그 store에 묶인 두 도구를 반환한다. LLM 입력에 run_id/root를 노출하지 않으며
+**다른 실행의 캐시로 대체하지 않는다.**
 
 - `search_market_signals(query, technology="both", top_k=5)` — URL·제목·게시일 후보·snippet·
   조회일·source_type. `status="candidate"`. **검색 결과는 사실 근거가 아니다.**
@@ -159,7 +159,7 @@ hits = research_search.invoke({"query": "...", "technology": "ITME", "top_k": 5}
 - 인용 검증 실패는 거부된 ID마다 이유를 돌려준다(오타·다른 기술 자료·입력에서 제외된 근거·없는 ID).
 - 정적 HTML/text/PDF만 지원한다. JS 렌더링·로그인·유료벽은 우회하지 않는다.
 - 저장: `runs/<run_id>/web/` 아래 `manifest.json` · `events.jsonl` · `search/*.json` · `snapshots/*`.
-  운영 스냅샷은 Git에 넣지 않는다. 증빙은 합성 데이터 실행(`docs/evidence/r3/`)으로 만든다.
+  운영 스냅샷은 Git에 넣지 않는다. 테스트 fixture는 합성 데이터 실행(`scripts/r3_smoke.py` → `tests/fixtures/r3/`)으로 만든다.
 - 한 run_id에는 한 프로세스만 붙는다. 여러 프로세스의 동시 쓰기 잠금은 제공하지 않는다.
 
 ### 이해관계자 노드 동작
@@ -282,6 +282,9 @@ failed를 검토 대기보다 먼저 본다. 되돌아오는 엣지는 `save_dra
 - 청킹은 **임베딩 모델과 같은 토크나이저**(`intfloat/multilingual-e5-small`)로 자른다. 범용
   토크나이저나 글자 수로 자르면 512토큰 한도를 넘어 뒷부분이 조용히 잘린 채 임베딩된다.
 - 임베딩 revision은 커밋 해시로 고정한다(`src/rag/embed.py`). `main`은 움직이는 포인터다.
+- 색인은 실행마다 메모리에 새로 만들되, 비싼 두 단계를 `data/index/`(Git 제외)에 캐시한다.
+  PDF 페이지 추출은 원문 sha256 + 추출 코드 소스로, 청크 벡터는 chunk_id 목록 + 임베딩 revision으로
+  키를 만든다. 원문·추출 코드·청크 본문·모델 중 하나라도 바뀌면 키가 바뀌어 다시 만든다. 지워도 안전하다.
 - PDF는 `x_tolerance=1.5`로 읽고 2단 페이지는 단마다 따로 읽는다(`index._page_text`). 기본값으로
   읽으면 2단 학회 논문의 공백이 사라지고 두 단의 줄이 섞여 ITME 검색 Hit@5가 0.29였다(수정 후 0.71).
 

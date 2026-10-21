@@ -7,12 +7,13 @@
 
 import hashlib
 import re
+from functools import lru_cache
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from transformers import AutoTokenizer
 
-from src.rag.embed import EMBED_MODEL
+from src.rag.embed import EMBED_MODEL, EMBED_REVISION
 from src.settings import settings
 
 ROWS_PER_TABLE_CHUNK = 12
@@ -51,10 +52,15 @@ def chunk_id(source: str, page: int, text: str) -> str:
     return hashlib.sha1(f"{source}|{page}|{text}".encode()).hexdigest()[:12]
 
 
+@lru_cache(maxsize=1)
 def _splitter():
+    """원문마다 토크나이저를 새로 불러오면 색인 생성이 원문 수 × 약 3초 늘어난다(실측 29초).
+
+    토크나이저도 임베딩 모델과 같은 revision 으로 고정한다 — 청크 경계가 chunk_id 를 정한다.
+    """
     lim = settings()["limits"]
     return RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-        AutoTokenizer.from_pretrained(EMBED_MODEL),
+        AutoTokenizer.from_pretrained(EMBED_MODEL, revision=EMBED_REVISION),
         chunk_size=lim["chunk_tokens"],
         chunk_overlap=lim["chunk_overlap"],
     )

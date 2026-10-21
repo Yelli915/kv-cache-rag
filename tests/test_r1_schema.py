@@ -1,6 +1,6 @@
 """공용 schema 가 R3 실물 출력을 그대로 통과시키는지 본다 — 담당: R1
 
-fixture 는 R3 가 커밋한 합성 데이터 실행 결과다. 새 모델을 만들어 맞추는 게 아니라
+fixture 는 R3 합성 데이터 실행(`scripts.r3_smoke`) 결과다. 새 모델을 만들어 맞추는 게 아니라
 이미 돌아가는 노드의 출력이 계약이므로, round-trip 이 깨지면 계약이 깨진 것이다.
 """
 
@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from src.schema import Assessment, Claim, Event, Gap, Source
 
-R3 = Path("docs/evidence/r3")
+R3 = Path("tests/fixtures/r3")
 
 
 def load(name):
@@ -20,7 +20,7 @@ def load(name):
 
 
 def test_r3_assessment_round_trips_unchanged():
-    raw = load("runs/r3-smoke/stakeholder.json")
+    raw = load("stakeholder.json")
     assert Assessment.model_validate(raw).model_dump() == raw
 
 
@@ -31,12 +31,12 @@ def test_r3_failed_assessment_validates():
 
 
 def test_r3_trace_lines_validate():
-    lines = (R3 / "runs/r3-smoke/stakeholder-trace.jsonl").read_text(encoding="utf-8").splitlines()
+    lines = (R3 / "stakeholder-trace.jsonl").read_text(encoding="utf-8").splitlines()
     assert lines and all(Event.model_validate(json.loads(line)) for line in lines)
 
 
 def test_broken_citation_chain_is_rejected():
-    raw = load("runs/r3-smoke/stakeholder.json")
+    raw = load("stakeholder.json")
     raw["evidence"] = [e for e in raw["evidence"]
                        if e["evidence_id"] != raw["claims"][0]["evidence_ids"][0]]
     with pytest.raises(ValidationError, match="없는 evidence"):
@@ -44,21 +44,21 @@ def test_broken_citation_chain_is_rejected():
 
 
 def test_orphan_evidence_is_rejected():
-    raw = load("runs/r3-smoke/stakeholder.json")
+    raw = load("stakeholder.json")
     raw["evidence"][0]["source_id"] = "web-nonexistent"
     with pytest.raises(ValidationError, match="sources 에 없다"):
         Assessment.model_validate(raw)
 
 
 def test_failed_status_cannot_keep_claims():
-    raw = load("runs/r3-smoke/stakeholder.json")
+    raw = load("stakeholder.json")
     raw["status"] = "failed"
     with pytest.raises(ValidationError, match="claims 가 남아"):
         Assessment.model_validate(raw)
 
 
 def test_inference_requires_explanation():
-    raw = load("runs/r3-smoke/stakeholder.json")["claims"][0]
+    raw = load("stakeholder.json")["claims"][0]
     with pytest.raises(ValidationError, match="explanation"):
         Claim.model_validate(raw | {"kind": "inference", "explanation": ""})
     Claim.model_validate(raw | {"kind": "inference", "explanation": "전제: ..."})

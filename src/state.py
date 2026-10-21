@@ -18,6 +18,10 @@ from pathlib import Path
 from typing import Annotated, TypedDict
 
 
+# 평가 노드가 Assessment 를 쓰는 State 키. 병합·검증·검토·참고문헌·보고서가 모두 이 순서로 읽는다.
+ASSESSMENT_NODES = ("research", "maturity", "market", "stakeholder", "domain_assessment")
+
+
 class ReportState(TypedDict, total=False):
     # ── 초기화 ──
     run_id: Annotated[str, "실행 식별자. runs/<run_id>/ 아래에 원문 스냅샷·결과를 남긴다"]

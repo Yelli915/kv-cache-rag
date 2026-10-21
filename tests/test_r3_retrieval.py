@@ -57,7 +57,7 @@ def test_corrupt_returned_collection_is_blocked(monkeypatch):
         retrieve.search('q', 'papers_core', perspective='research')
 
 
-@pytest.mark.parametrize('kwargs', [{'top_k': 0}, {'technology': 'unknown'}, {'query': ''}, {'mode': 'rrf'}])
+@pytest.mark.parametrize('kwargs', [{'top_k': 0}, {'technology': 'unknown'}, {'query': ''}])
 def test_invalid_request_fails_explicitly(kwargs):
     args = dict(query='q', collection='papers_core')
     args.update(kwargs)
@@ -66,7 +66,6 @@ def test_invalid_request_fails_explicitly(kwargs):
 
 
 def test_role_bound_tool_hides_collection_and_rejects_override(monkeypatch):
-    assert hasattr(docs, 'bind_document_search'), 'role-bound tool is missing'
     bound = docs.bind_document_search('market')
     assert 'collection' not in bound.args
     assert 'perspective' not in bound.args
@@ -75,7 +74,6 @@ def test_role_bound_tool_hides_collection_and_rejects_override(monkeypatch):
 
 
 def test_role_bound_tool_rechecks_results(monkeypatch):
-    assert hasattr(docs, 'bind_document_search'), 'role-bound tool is missing'
     monkeypatch.setattr(docs, 'search', lambda *a, **k: [{
         'chunk_id': '000000000001', 'collection': 'papers_core', 'source_id': 'p',
         'source': 'p', 'applies_to': ['ITME'], 'perspectives': ['market'],

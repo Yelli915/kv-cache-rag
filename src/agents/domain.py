@@ -14,9 +14,9 @@
   따로 받아 kind=hypothesis Claim 이 된다.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from src.agents.common import TECHS, DomainDraft, evaluate
+from src.agents.common import TECHS, DomainDraft, domain_of, evaluate, unique
 from src.tools.docs import bind_document_search
 
 # 도메인 적용 평가 시스템 프롬프트 및 가드레일
@@ -53,32 +53,15 @@ QUERIES = [
 
 def domain_assessment(state: Dict[str, Any]) -> Dict[str, Any]:
     """papers_core와 context 문서를 검색하여 도메인 적용성 Assessment를 반환한다."""
-    run_id = state.get("run_id", "default_run")
-    domain = state.get(
-        "domain",
-        state.get("run_config", {}).get("domain", "데이터센터/클라우드 추론 인프라 (대규모 동시성, 비용 민감)"),
-    )
     core_search = bind_document_search("domain")               # papers_core (direct/comparison)
     context_search = bind_document_search("domain", "context") # context (comparison/secondary)
-    chunks: List[Dict[str, Any]] = []
-    seen = set()
+    chunks = unique([
+        *(c for tech in TECHS for q in QUERIES                 # 실증 벤치마크
+          for c in core_search.invoke({"query": q, "technology": tech, "top_k": 4})),
+        *context_search.invoke({"query": "데이터센터 추론 동시성 메모리 비용 구조 TCO",  # 배경·비용 구조
+                                "technology": "both", "top_k": 3}),
+    ])
 
-    def _add(hits):
-        for c in hits:
-            cid = c.get("chunk_id")
-            if cid and cid not in seen:
-                seen.add(cid)
-                chunks.append(c)
-
-    for tech in TECHS:                                         # 실증 벤치마크
-        for q in QUERIES:
-            _add(core_search.invoke({"query": q, "technology": tech, "top_k": 4}))
-    _add(context_search.invoke({                               # 인프라 배경·비용 구조
-        "query": "데이터센터 추론 동시성 메모리 비용 구조 TCO",
-        "technology": "both",
-        "top_k": 3,
-    }))
-
-    return evaluate(node="domain_assessment", role="domain", run_id=run_id, domain=domain,
-                    instruction=INSTRUCTION, chunks=chunks, schema=DomainDraft,
+    return evaluate(node="domain_assessment", role="domain", run_id=state.get("run_id", "default_run"),
+                    domain=domain_of(state), instruction=INSTRUCTION, chunks=chunks, schema=DomainDraft,
                     gap_reason="도메인 인프라 실증 또는 결합 워크로드 실측 근거 미확인")

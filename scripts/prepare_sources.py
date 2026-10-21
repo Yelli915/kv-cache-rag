@@ -12,10 +12,8 @@ sources.json 에 적힌 출처를 내려받아
 "고유 페이지가 없는 웹 문서는 A4 기준 환산 쪽수를 산출한다"를 구현한다.
 
 사용법:
-    pip install requests pypdf beautifulsoup4
-    python scripts/prepare_sources.py            # 내려받기 + 매니페스트 작성
-    python scripts/prepare_sources.py            # 기본: 해시만 검증 (재수집 안 함)
-    python scripts/prepare_sources.py --refresh  # 원문 재수집 + 매니페스트 갱신
+    uv run python scripts/prepare_sources.py            # 없는 원문만 받고 해시 검증
+    uv run python scripts/prepare_sources.py --refresh  # 원문 재수집 + 매니페스트 갱신
 """
 from __future__ import annotations
 
@@ -36,11 +34,8 @@ UA = "Mozilla/5.0 (compatible; KVCacheEval/1.0; academic coursework)"
 
 
 def sha256(path: Path) -> str:
-    h = hashlib.sha256()
     with path.open("rb") as f:
-        for block in iter(lambda: f.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
+        return hashlib.file_digest(f, "sha256").hexdigest()
 
 
 def download(url: str, dest: Path) -> None:
@@ -72,8 +67,6 @@ def html_to_text(path: Path) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--verify", action="store_true",
-                    help="(기본 동작) 다시 내려받지 않고 해시만 검증")
     ap.add_argument("--refresh", action="store_true",
                     help="원문을 다시 내려받고 매니페스트를 갱신한다. 원문이 바뀌면 chunk_id 가 "
                          "전부 달라져 goldenset 재라벨링이 필요하다")

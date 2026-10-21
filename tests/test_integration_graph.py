@@ -16,17 +16,10 @@ import pytest
 from src.agents import common, domain, market, maturity, research
 from src.graph import build_graph, invoke
 from src.output import pdf
-from src.schema import Assessment
+from src.state import ASSESSMENT_NODES
+from src.schema import Assessment, Synthesis
+from tests.helpers import PAPERS, fill_review, search
 
-# 노드별 허용 컬렉션이 다르다(§3). 시장 근거를 papers_core 에서 주면 검증이 막는다.
-PAPERS = [
-    {"chunk_id": "aaaaaaaaaaaa", "source_id": "turboquant-paper", "collection": "papers_core",
-     "page": 3, "text": "TurboQuant reports 3.5-bit KV cache quantization.",
-     "applies_to": ["TurboQuant"], "scope": "direct", "cosine_score": 0.7},
-    {"chunk_id": "bbbbbbbbbbbb", "source_id": "itme-paper", "collection": "papers_core",
-     "page": 7, "text": "ITME reports 1.80x throughput over an NVMe-oF baseline.",
-     "applies_to": ["ITME"], "scope": "direct", "cosine_score": 0.6},
-]
 ECOSYSTEM = [
     {"chunk_id": "cccccccccccc", "source_id": "cxl-report", "collection": "ecosystem",
      "page": 2, "text": "CXL memory modules shipped by multiple vendors.",
@@ -35,7 +28,6 @@ ECOSYSTEM = [
      "page": 4, "text": "Serving frameworks announce KV cache quantization support.",
      "applies_to": ["TurboQuant"], "scope": "ecosystem", "cosine_score": 0.5},
 ]
-CHUNKS = PAPERS + ECOSYSTEM
 
 PAPERS_DRAFT = {
     "turboquant": "TurboQuant 는 3.5비트 양자화를 보고한다 [aaaaaaaaaaaa].",
@@ -48,14 +40,6 @@ MARKET_TEXT = (
     "## ③ 생태계 지지\n일반 CXL 근거이며 추론 특화 여부 미확인 [cccccccccccc].\n\n"
     "근거 공백: TurboQuant 운영 배포 사례 미확인"
 )
-
-
-class FakeSearch:
-    def __init__(self, chunks):
-        self.chunks = chunks
-
-    def invoke(self, payload):
-        return self.chunks
 
 
 def stakeholder_stub(state):
@@ -88,7 +72,6 @@ class FakeSynthesis:
         return self
 
     def invoke(self, prompt):
-        from src.schema import Synthesis
         return Synthesis(
             agreements=["두 기술 모두 KV cache 메모리 병목을 완화한다."],
             conflicts=[{"perspective": "TRL", "why": "실증 환경의 범위가 다르다"}],
@@ -102,7 +85,7 @@ def wired(monkeypatch, tmp_path):
     for module, chunks in ((research, PAPERS), (maturity, PAPERS), (domain, PAPERS),
                            (market, ECOSYSTEM)):
         monkeypatch.setattr(module, "bind_document_search",
-                            lambda *a, _chunks=chunks, **k: FakeSearch(_chunks))
+                            lambda *a, _chunks=chunks, **k: search(_chunks))
     monkeypatch.setattr(market, "run_node", lambda *a, **k: MARKET_TEXT)
     monkeypatch.setattr(common, "draft",
                         lambda *a, schema=common.Draft, **k: schema.model_validate(PAPERS_DRAFT))
@@ -157,7 +140,7 @@ def test_pipeline_stops_for_human_review(wired):
 def test_every_assessment_merges_into_the_registries(wired):
     final, _ = wired()
 
-    for node in ("research", "maturity", "market", "stakeholder", "domain_assessment"):
+    for node in ASSESSMENT_NODES:
         Assessment.model_validate(final[node])
 
     # 합류 단계가 다섯 Assessment 의 출처를 모두 모은다 (§6·§9)
@@ -188,19 +171,8 @@ def test_resume_after_review_produces_the_submission(wired, tmp_path):
     평가 보류 항목이 남아 있으므로 run_status 는 partial 이다. §7 — 부분 결과는 일부
     항목을 평가 보류로 남겼으나 포함된 주장의 검증은 통과한 경우다. 보고서는 낸다.
     """
-    import csv
-
     _, directory = wired()
-
-    path = directory / "review.csv"
-    rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))
-    for row in rows:
-        row["review_result"] = "확인"
-        row["reviewer"] = "권예리"
-    with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    fill_review(directory / "review.csv", "확인")
 
     draft = json.loads((directory / "draft.json").read_text(encoding="utf-8"))
     final, _ = wired(state=draft | {"trace": []}, start="review")
@@ -215,18 +187,8 @@ def test_resume_after_review_produces_the_submission(wired, tmp_path):
 
 def test_rejected_claim_never_reaches_the_report(wired, tmp_path):
     """§8 — 부결된 주장은 사실 서술에서 제외한다."""
-    import csv
-
     _, directory = wired()
-    path = directory / "review.csv"
-    rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))
-    for row in rows:
-        row["review_result"] = "부결" if row["node"] == "market" else "확인"
-        row["reviewer"] = "권예리"
-    with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    fill_review(directory / "review.csv", lambda row: "부결" if row["node"] == "market" else "확인")
 
     draft = json.loads((directory / "draft.json").read_text(encoding="utf-8"))
     final, _ = wired(state=draft | {"trace": []}, start="review")

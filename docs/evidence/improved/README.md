@@ -1,6 +1,8 @@
-# 개선 후 실물 실행 — 2026-10-21
+# 기준선 → 개선 실물 실행 — 2026-10-21
 
-[기준선](../baseline/README.md)에서 드러난 세 문제를 고친 뒤 같은 코퍼스·같은 모델로 다시 돌린 기록이다.
+개선 작업(구조화 출력·수치 검증) **전** 코드로 실제 LLM·색인·웹 검색을 끝까지 돌린 기준선과, 거기서
+드러난 세 문제를 고친 뒤 같은 코퍼스·같은 모델로 다시 돌린 기록이다. R1·R3 스모크와 달리
+mock·합성 데이터가 아니다. 실행 원본은 `../baseline/20261021-121122-d0a3d6/`와 이 폴더에 있다.
 
 | 항목 | 기준선 `20261021-121122-d0a3d6` | 개선 후 `20261021-123919-5c7710` |
 |---|---|---|
@@ -12,8 +14,32 @@
 | stakeholder ITME Claim | **0건** | 1건 (developers) |
 | Claim 합계 | 11 | 13 |
 
-모델 `gemini-3.8-flash`, 코퍼스 `data/manifest.json` 2026-10-21판(두 실행 동일).
-포함·제외 파일은 기준선과 같다(`web/snapshots/` 제외).
+모델 `google_genai` / `gemini-3.8-flash`(temperature 0, seed 20260922 실효값), 코퍼스
+`data/manifest.json` 2026-10-21판(두 실행 동일 — PDF 6건은 9월과 해시 동일, 웹 4건은 원문이 바뀌어 재수집).
+기준선은 5분 4초 · LLM 호출 7회(캐시 적중 0) · 토큰 89,684(입력 59,757 / 출력 29,927).
+
+포함: `run.json` · `state.json` · `trace.jsonl` · `review.csv` · `stakeholder-trace.jsonl` ·
+`stakeholder-validation.json` · `web/events.jsonl`. **제외:** `web/snapshots/`(제3자 원문 HTML, interface ③ —
+운영 스냅샷은 Git에 넣지 않는다), `web/search/`, 그리고 `state.json`에 이미 든 사본 — `draft.json`,
+`stakeholder.json`(= `state.stakeholder`), `web/manifest.json`(출처·근거는 `state.stakeholder`, 수집 실패·검색은
+`web/events.jsonl`).
+
+### 기준선 노드별 결과
+
+| 노드 | status | Claim (기술·kind·근거 수) | Gap |
+|---|---|---|---|
+| research | completed | **both**·fact·7 — 본문 3,956자 한 덩어리 | 8 |
+| maturity | completed | TurboQuant·fact·1 / ITME·fact·1 | 5 |
+| market | completed | both·fact·3 / both·fact·5 | 7 |
+| stakeholder | partial | TurboQuant 4건(fact 3·inference 1), **ITME 0건** | 5 |
+| domain_assessment | completed | both·fact·5 / both·hypothesis·5 | 6 |
+| synthesis | — | 일치 5 · 상충 0 · 결합 가설 1 | 44 |
+
+기준선 research Claim에 지시문 가드레일이 근거 없이 그대로 새어 나온 예 — 8배의 출처(`turboquant-blog`)는
+ecosystem 컬렉션이라 research(papers_core)가 볼 수 없는데도 `kind=fact`, 근거 7건으로 자동 검증을 통과했다.
+
+> [가드레일 ② - 8배 가속]: 8배 가속 주장은 H100 GPU 환경의 어텐션 로짓 연산에 국한된
+> 가속이며 … 제공된 청크에는 H100 환경 및 8배 가속 관련 구체적 수치 근거가 명시되지 않아 미확인입니다
 
 **캐시 주의** — 이 실행의 research·maturity·domain·market 응답은 캐시 적중이다(`run.json`
 `cache_hits: 4`). 프롬프트가 같은 직전 실행 `20261021-123030-55c6fb`가 생성했고, 그 실행에서
@@ -125,4 +151,5 @@ Claim 1건씩이 사람에게 그대로 넘어갔다** — 이제 생성 단계 
 
 ## 재개
 
-`runs/20261021-123919-5c7710/review.csv`를 채우고 `uv run python app.py --resume 20261021-123919-5c7710`.
+두 폴더는 검토 대기 정지 시점 기록이다. 검토를 마치려면 `runs/<run_id>/review.csv`를 채우고
+`uv run python app.py --resume <run_id>`.

@@ -1,17 +1,17 @@
 """평가 노드 공통 조립 — `common.evaluate` (검증: 인터페이스 계약 ① · 설계서 §6 · 부록 A)
 
-research · maturity · domain 이 같은 조립을 쓴다. 노드별 파일은 검색 방식만 보고,
-인용 사슬·status 판정·수치 재작성은 여기서 한 번 본다. LLM(`common.draft`)과 색인은 가짜다.
+research · maturity · domain 이 같은 조립을 쓴다. 인용 사슬·status 판정·수치 재작성은
+여기서 한 번 보고, 노드별로는 검색 방식(보완 검색·컬렉션)만 맨 아래에서 본다.
+LLM(`common.draft`)과 색인은 가짜다.
 """
 
 from types import SimpleNamespace
 
-from src.agents import common
+from src.agents import common, domain, market, maturity, research
 from src.agents.common import Draft, DomainDraft, evaluate
 from src.schema import Assessment
+from tests.helpers import ITME_ID, TQ_ID, search
 
-TQ_ID = "aaaaaaaaaaaa"
-ITME_ID = "bbbbbbbbbbbb"
 UNSEEN_ID = "ffffffffffff"
 
 
@@ -19,13 +19,6 @@ def chunk(cid, *, applies_to, scope="direct", collection="papers_core", source_i
           page=7, text="본문 내용"):
     return {"chunk_id": cid, "source_id": source_id, "source": source_id, "collection": collection,
             "applies_to": list(applies_to), "scope": scope, "page": page, "text": text}
-
-
-def make_bind(chunks_by_tech):
-    """technology 로 고정 청크를 돌려주는 가짜 bind_document_search. query 는 무시한다."""
-    def bind(role, collection=None):
-        return SimpleNamespace(invoke=lambda p: list(chunks_by_tech.get(p["technology"], [])))
-    return bind
 
 
 def drafts(monkeypatch, *outputs):
@@ -157,7 +150,6 @@ def test_domain_hypothesis_is_a_separate_claim_with_premises(monkeypatch):
     assert all(s.allowed_uses == ["domain"] for s in a.sources)
 
 
-
 def test_uncited_hypothesis_number_uses_the_rewrite(monkeypatch):
     """가설은 인용이 없으면 본문 전체 인용을 전제로 Claim 이 된다 — 같은 근거로 미리 검사한다."""
     calls = drafts(monkeypatch,
@@ -206,14 +198,11 @@ def test_structured_output_failure_then_success_uses_the_retry(monkeypatch):
 
 
 def test_market_unsupported_number_gets_one_rewrite(monkeypatch):
-    from src.agents import market
-
     eco = [chunk("cccccccccccc", applies_to=["ITME"], collection="ecosystem", scope="ecosystem",
                  text="CXL modules shipped."),
            chunk("dddddddddddd", applies_to=["TurboQuant"], collection="ecosystem", scope="ecosystem",
                  text="Frameworks support KV cache quantization.")]
-    monkeypatch.setattr(market, "bind_document_search",
-                        lambda *a, **k: SimpleNamespace(invoke=lambda p: eco))
+    monkeypatch.setattr(market, "bind_document_search", lambda *a, **k: search(eco))
     texts = iter(["## ① 시장 규모/성장성\n시장이 30% 성장 [cccccccccccc].\n## ② 상용화/채택 현황\n지원 [dddddddddddd].",
                   "## ① 시장 규모/성장성\n정량 리포트 미확인 [cccccccccccc].\n## ② 상용화/채택 현황\n지원 [dddddddddddd]."])
     instructions = []
@@ -223,3 +212,54 @@ def test_market_unsupported_number_gets_one_rewrite(monkeypatch):
 
     assert len(instructions) == 2 and "30%" in instructions[1]
     assert out["trace"][0]["attempt"] == 2 and out["trace"][0]["number_problems"] == 0
+
+
+# ── 노드별 검색 방식 ──────────────────────────────────────────────────────────
+
+def queued(monkeypatch, agent, queue):
+    """기술별로 호출 순서대로 queue 의 결과를 내는 검색. 다 쓰면 빈 결과다."""
+    calls = {tech: 0 for tech in queue}
+
+    def invoke(payload):
+        tech = payload["technology"]
+        calls[tech] += 1
+        return list(queue[tech][calls[tech] - 1]) if calls[tech] <= len(queue[tech]) else []
+
+    monkeypatch.setattr(agent, "bind_document_search", lambda *a, **k: SimpleNamespace(invoke=invoke))
+
+
+def test_research_widens_once_when_a_technology_is_unretrieved(monkeypatch):
+    """direct 근거가 없는 기술이 있으면 WIDEN 질의로 1회 보완한다. ITME 는 보완에서만 회수된다."""
+    queued(monkeypatch, research, {"TurboQuant": [[TQ], [], []], "ITME": [[], [], [], [ITME]]})
+    drafts(monkeypatch, {"turboquant": f"압축한다 [{TQ_ID}].", "itme": f"가속한다 [{ITME_ID}].", "gaps": []})
+
+    out = research.research({"run_id": "r4-test", "run_config": {}})
+
+    assert out["trace"][0]["supplemental_searches"] == 3
+    assert out["research"]["status"] == "completed"
+
+
+def test_maturity_supplements_once_per_unretrieved_technology(monkeypatch):
+    """기술 근거가 하나도 없으면 기술별 질의로 1회 보완한다."""
+    queued(monkeypatch, maturity, {"TurboQuant": [[TQ], []], "ITME": [[], [], [ITME]]})
+    drafts(monkeypatch, {"turboquant": f"TRL 4 [{TQ_ID}].", "itme": f"TRL 3 [{ITME_ID}].", "gaps": []})
+
+    out = maturity.maturity({"run_id": "r4-test", "run_config": {}})
+
+    assert out["trace"][0]["supplemental_searches"] == 1
+    assert out["maturity"]["status"] == "completed"
+
+
+def test_domain_queries_core_and_context_collections(monkeypatch):
+    calls = []
+
+    def bind(role, collection=None):
+        target = "context" if collection == "context" else "core"
+        return SimpleNamespace(invoke=lambda p: calls.append((target, p["technology"])) or [])
+
+    monkeypatch.setattr(domain, "bind_document_search", bind)
+    drafts(monkeypatch, {"turboquant": "근거 없음.", "itme": "근거 없음.", "gaps": []})
+
+    domain.domain_assessment({"run_id": "r4-test", "run_config": {}})
+
+    assert {("core", "TurboQuant"), ("core", "ITME"), ("context", "both")} <= set(calls)

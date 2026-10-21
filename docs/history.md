@@ -6,12 +6,11 @@
 
 | 시점 | 일 | 증빙 |
 |---|---|---|
-| R3 (`791af1b` 기준) | dense 검색·역할 고정, 실행별 웹 근거, 이해관계자 노드 | `docs/evidence/r3/` (합성 데이터) |
-| R1 (`f96ec37` 기준) | 공용 schema, State 17필드, 부록 A 그래프, run_id 실행 제어 | `docs/evidence/r1/` (전 노드 mock) |
+| R3 (`791af1b` 기준) | dense 검색·역할 고정, 실행별 웹 근거, 이해관계자 노드 | `scripts/r3_smoke.py` (합성 데이터) · `tests/fixtures/r3/` |
+| R1 (`f96ec37` 기준) | 공용 schema, State 17필드, 부록 A 그래프, run_id 실행 제어 | `scripts/r1_smoke.py` (전 노드 mock) · `tests/test_r1_graph.py` |
 | 통합 #13 (`1bbcdd5` 기준) | 인터페이스 정합 7단계, 첫 통합 테스트 | `tests/test_integration_graph.py` |
 | 2026-09-22 | 재현성 조사 → 목표 폐기, 응답 캐시·판정 원장만 유지 | 아래 「재현성」 |
-| 2026-10-21 | LLM을 Gemini(`gemini-3.8-flash`)로 전환, 개선 전 기준선 실물 실행 | `docs/evidence/baseline/` (실물) |
-| 2026-10-21 | 구조화 출력·수치 검증·ITME 질의 개선, 개선 후 실물 실행 | `docs/evidence/improved/` (실물) |
+| 2026-10-21 | LLM을 Gemini(`gemini-3.8-flash`)로 전환, 기준선 실행 → 구조화 출력·수치 검증·ITME 질의 개선 → 개선 후 실행 | `docs/evidence/improved/` (실물) |
 | 2026-10-21 | 검색 골든셋 28문항, dense/BM25/RRF 실측, PDF 추출 수정 | `docs/evidence/retrieval/` |
 
 ---
@@ -132,42 +131,25 @@ interface ③ *다른 실행의 캐시로 대체하지 않는다*를 어긴다. 
 
 ## 기준선 → 개선 (2026-10-21)
 
-기준선 실물 실행에서 세 문제가 드러났고 고쳤다. 수치와 경위는 `docs/evidence/improved/README.md`.
+기준선 실물 실행에서 세 문제가 드러났고 고쳤다. 수치·경위·측정은 [improved/README.md](evidence/improved/README.md).
 
-- **research가 `both` Claim 하나로 뭉쳤다.** 모델이 `### 1. 개요`를 먼저 두자 `1. TurboQuant`를
-  찾는 헤더 정규식이 실패했다. → research·maturity·domain을 구조화 출력(`turboquant`·`itme`·`gaps`)으로
-  바꾸고 세 벌이던 조립 코드를 `common.evaluate` 하나로 합쳤다.
-- **지시문의 수치가 근거 없이 Claim에 들어가 검증을 통과했다.** 검증이 ID 존재·범위만 봤고
-  quote가 300자로 잘려 대조할 원문도 없었다. → `validate.numeric_errors`가 수치를 인용 원문과
-  대조하고 §2 조건어를 확인한다. 노드는 생성 직후 1회 재작성한다. quote는 청크 전문.
-- **처음엔 줄 단위로 대조해 다시 샜다.** 개선한 지시문의 조건 괄호에서 "128GB"가 근거 없이 옮겨졌는데,
-  같은 문단의 다른 청크 그림 축 `128 MB`가 통과시켰다. → 문장(인용) 단위 대조, 다른 단위가 붙은
-  숫자 배제, 지시문 조건에서 실험 설정값 제거.
-- **조건어를 한 표기로만 요구했다가 실행이 막혔다.** 35.7%에 `128GB`만 요구했는데 ITME 초록은
-  "beyond host memory limits"로 적는다. 원문에 없는 수치를 쓰라는 요구가 돼 수정 기회를 써도
-  통과할 수 없었다. → 같은 뜻의 표기를 모두 인정한다.
-- **fallback은 드물었다.** 캐시 없이 반복하니 개선 전 코드도 20회 중 0회였다. 구조화 출력의
-  이점은 빈도가 아니라 fallback이 구조적으로 불가능해진 것이다. 대신 개선 전 기술별 Claim은
-  20/20이 다른 기술 언급을 담았다(뒤에 붙는 요약·근거 공백 줄로 추정). 측정은 API 월 한도로
-  개선 후 20회가 빠져 미완이다.
-- **stakeholder ITME 근거 0건은 검색 질의 문제였다.** 약어 "ITME"만으로는 무관한 페이지가 돌아왔다.
-  → 질의에 정식 명칭과 맥락어를 붙였다.
+- **research가 `both` Claim 하나로 뭉쳤다**(헤더 정규식 실패) → research·maturity·domain을 구조화 출력으로
+  바꾸고 세 벌이던 조립 코드를 `common.evaluate` 하나로 합쳤다. 이점은 빈도 감소가 아니라 fallback이
+  구조적으로 불가능해진 것이다(캐시 없이 반복하니 개선 전도 20회 중 0회).
+- **지시문의 수치가 근거 없이 Claim에 들어가 검증을 통과했다** → `validate.numeric_errors`가 수치를 그 문장이
+  인용한 원문과 대조하고 §2 조건어(같은 뜻의 표기 모두)를 확인한다. quote는 청크 전문.
+- **stakeholder ITME 근거 0건은 검색 질의 문제였다** → 질의에 정식 명칭과 맥락어를 붙였다.
 
 ## 검색 품질 실측 (2026-10-21)
 
-골든셋을 2문항(정답 청크 ID 없음, 스크립트가 돌지 않음)에서 28문항으로 만들었다. 정답은 원문
-anchor 문구로 고정해 다시 라벨링할 수 있다.
-
-- **가장 큰 변수는 검색 방식이 아니라 PDF 추출이었다.** 2단 학회 논문(ITME·PIM-CXL·InfiniGen)이
-  공백 없이(`ITMEachievesuptoa35.7%`), 두 단의 줄이 섞인 채 색인돼 있었다. `x_tolerance=1.5`와 단별
-  읽기로 고치자 dense Hit@5가 0.43 → 0.68, ITME는 0.29 → 0.71. 모든 chunk_id가 바뀌었다.
-- dense vs RRF는 0.68 vs 0.75(28문항 중 2문항 차이)라 운영은 dense로 둔다.
-- 한국어 질의가 약하다(ko 0.57 / en 0.79). 놓친 9문항 중 6문항이 한국어 전문 용어 질의다.
+골든셋을 28문항으로 만들었다(원문 anchor 문구로 정답 고정). 가장 큰 변수는 검색 방식이 아니라 PDF
+추출이었다 — 2단 논문 추출을 고치자 dense Hit@5 0.43 → 0.68. RRF(0.75)는 2문항 차이라 운영은 dense로 둔다.
+상세는 [retrieval/README.md](evidence/retrieval/README.md).
 
 ## 남은 한계
 
-- `docs/evidence/r1`·`r3`는 mock·합성 데이터다. 배선·병합·상태 판정·저장을 검증했을 뿐
-  기술 평가가 아니다.
+- R1·R3 스모크(`scripts/r1_smoke.py`·`r3_smoke.py`)는 mock·합성 데이터다. 배선·병합·상태 판정·저장을
+  검증했을 뿐 기술 평가가 아니다.
 - 수치 검증은 원문에 단위 없이 흔한 작은 정수(비트 수 2·3·4)를 구분하지 못한다. 변조로 재면
   못 잡는 경우 17건이 모두 이 종류였다. 수치가 어느 실험의 값인지는 사람이 검토한다.
 - 마지막 수치 검증 수정(인용 단위 대조, `128 MB` 배제, research 조건의 실험값 제거) 뒤 실물 실행을

@@ -17,6 +17,7 @@ dense 는 운영 검색(`src.rag.retrieve.search`) 그대로다. bm25·rrf 는 *
 """
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -62,9 +63,6 @@ def label(items: List[Dict[str, Any]]) -> None:
             raise SystemExit(f"❌ {item['id']}: anchor 를 담은 청크가 없다 — {item['anchor']!r}")
 
 
-_bm25_cache: Dict[str, Any] = {}
-
-
 def _tokens(text: str) -> List[str]:
     return re.findall(r"[a-z0-9]+(?:[.-][a-z0-9]+)*", text.lower())
 
@@ -77,20 +75,24 @@ def _candidates(technology: str) -> List[Any]:
             and permitted({**d.metadata, "chunk_id": d.metadata["chunk_id"]}, COLLECTION, technology)]
 
 
-def bm25_ranking(question: str, technology: str) -> List[str]:
+@functools.lru_cache(maxsize=None)
+def _bm25_index(technology: str):
     from rank_bm25 import BM25Okapi
-    if technology not in _bm25_cache:
-        docs = _candidates(technology)
-        _bm25_cache[technology] = (BM25Okapi([_tokens(d.page_content) for d in docs]),
-                                   [d.metadata["chunk_id"] for d in docs])
-    bm25, ids = _bm25_cache[technology]
+    docs = _candidates(technology)
+    return BM25Okapi([_tokens(d.page_content) for d in docs]), [d.metadata["chunk_id"] for d in docs]
+
+
+@functools.lru_cache(maxsize=None)   # rrf 가 dense·bm25 순위를 다시 쓴다
+def bm25_ranking(question: str, technology: str) -> tuple:
+    bm25, ids = _bm25_index(technology)
     scores = bm25.get_scores(_tokens(to_keywords(question)))
-    return [cid for _, cid in sorted(zip(scores, ids), key=lambda x: (-x[0], x[1]))]
+    return tuple(cid for _, cid in sorted(zip(scores, ids), key=lambda x: (-x[0], x[1])))
 
 
-def dense_ranking(question: str, technology: str) -> List[str]:
-    hits = search(question, collection=COLLECTION, technology=technology, top_k=100, mode="dense")
-    return [h["chunk_id"] for h in hits]
+@functools.lru_cache(maxsize=None)
+def dense_ranking(question: str, technology: str) -> tuple:
+    hits = search(question, collection=COLLECTION, technology=technology, top_k=100)
+    return tuple(h["chunk_id"] for h in hits)
 
 
 def ranking(item: Dict[str, Any], mode: str) -> List[str]:

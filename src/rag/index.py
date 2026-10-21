@@ -7,17 +7,24 @@
     uv run python -m scripts.ingest            # 색인 점검
 """
 
+import hashlib
+import inspect
 import json
 from pathlib import Path
 
+import numpy as np
 import pdfplumber
 from langchain_community.vectorstores import FAISS
 
 from src.rag import chunk as chunker
-from src.rag.embed import get_embeddings
+from src.rag.embed import EMBED_REVISION, get_embeddings
 
 MANIFEST = Path("data/manifest.json")
 COLLECTIONS = ("papers_core", "ecosystem", "context")
+# PDF 레이아웃 분석이 색인 생성 시간의 대부분이다(실측 약 45초). 원문과 추출 코드가 같으면
+# 결과도 같으므로 페이지별 추출 결과를 저장해 둔다. data/index/ 는 Git 에서 제외된다.
+PAGE_CACHE = Path("data/index/pages")
+VECTOR_CACHE = Path("data/index/vectors")
 
 _cache: dict = {}
 
@@ -56,17 +63,56 @@ def _page_text(page) -> str:
     return page.extract_text(x_tolerance=X_TOLERANCE) or ""
 
 
+def _extract_pdf(path: str) -> list[tuple[int, str, list]]:
+    with pdfplumber.open(path) as pdf:
+        return [(i + 1, _page_text(p), p.extract_tables()) for i, p in enumerate(pdf.pages)]
+
+
+def _cached_pdf(entry: dict) -> list[tuple[int, str, list]]:
+    """추출 결과를 원문 해시 + 추출 코드로 캐시한다. 둘 중 하나가 바뀌면 키가 바뀌어 다시 추출한다.
+
+    원문 해시는 매니페스트 값이다 — setup 이 실제 파일과 대조해 둔다(verify_corpus).
+    """
+    code = inspect.getsource(_page_text) + inspect.getsource(_extract_pdf) + str(X_TOLERANCE)
+    key = hashlib.sha256(f"{entry['sha256']}|{code}".encode()).hexdigest()[:16]
+    path = PAGE_CACHE / f"{entry['id']}.{key}.json"
+    if path.exists():
+        return [tuple(p) for p in json.loads(path.read_text(encoding="utf-8"))]
+    pages = _extract_pdf(entry["local_path"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(pages, ensure_ascii=False), encoding="utf-8")
+    return pages
+
+
 def _pages(entry: dict) -> list[tuple[int, str, list]]:
     """매니페스트 항목을 [(페이지, 본문, 표)] 로 읽는다."""
     if entry["type"] == "pdf":
-        with pdfplumber.open(entry["local_path"]) as pdf:
-            pages = [(i + 1, _page_text(p), p.extract_tables())
-                     for i, p in enumerate(pdf.pages)]
+        pages = _cached_pdf(entry)
         # excerpt_only 문서는 sources.json 의 excerpt_pages: [시작, 끝] 로 범위를 좁힌다.
         lo, hi = (entry.get("excerpt_pages") or [0, 10**9])
         return [p for p in pages if lo <= p[0] <= hi]
     # 웹 문서는 prepare_sources 가 본문만 뽑아 .txt 로 저장해 둔다.
     return [(1, Path(entry["text_path"]).read_text(encoding="utf-8"), [])]
+
+
+def _faiss(docs, embeddings) -> FAISS:
+    """청크 임베딩을 캐시해 FAISS 를 만든다(실측 약 7초 절약).
+
+    키는 청크 ID 목록 + 임베딩 revision 이다. chunk_id 가 본문 해시라 본문이 한 글자라도
+    바뀌면 키가 바뀐다. 벡터는 pickle 없이 .npy 로 둔다.
+    """
+    texts = [d.page_content for d in docs]
+    key = hashlib.sha256(("|".join(d.metadata["chunk_id"] for d in docs)
+                          + EMBED_REVISION).encode()).hexdigest()[:16]
+    path = VECTOR_CACHE / f"{key}.npy"
+    if path.exists():
+        vectors = np.load(path, allow_pickle=False)
+    else:
+        vectors = np.asarray(embeddings.embed_documents(texts), dtype=np.float32)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(path, vectors, allow_pickle=False)
+    return FAISS.from_embeddings(list(zip(texts, vectors.tolist())), embeddings,
+                                 metadatas=[d.metadata for d in docs])
 
 
 def build() -> dict:
@@ -90,7 +136,6 @@ def build() -> dict:
             "applies_to": e.get("applies_to", []),
             "perspectives": e.get("perspectives", []),
             "scope": e.get("scope", ""),
-            "excerpt_only": e.get("excerpt_only", False),
         }
         chunks = chunker.split(_pages(e), meta)
         docs_by_col[e["collection"]] += chunks
@@ -108,7 +153,7 @@ def build() -> dict:
         if not docs:
             continue
         # R3 contract: dense only until retrieval failure analysis justifies BM25.
-        stores[collection] = {"dense": FAISS.from_documents(docs, embeddings)}
+        stores[collection] = {"dense": _faiss(docs, embeddings)}
 
     for n in notes:
         print(f"[index] ⚠ {n}")

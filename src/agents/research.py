@@ -6,9 +6,9 @@
 - 생성·인용 검증·Assessment 조립은 `common.evaluate` 가 한다.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from src.agents.common import TECHS, evaluate
+from src.agents.common import TECHS, domain_of, evaluate, unique
 from src.tools.docs import bind_document_search
 
 INSTRUCTION = """당신은 데이터센터 및 클라우드 인프라 관점의 기술 조사 수석 연구원(R4)입니다.
@@ -45,35 +45,19 @@ WIDEN = " 벤치마크 처리량 지연시간 정확도 오버헤드 theoretical
 
 def research(state: Dict[str, Any]) -> Dict[str, Any]:
     """papers_core에서 양 기술 1차 근거를 수집하고 Assessment를 반환한다."""
-    run_id = state.get("run_id", "default_run")
-    domain = state.get(
-        "domain",
-        state.get("run_config", {}).get("domain", "데이터센터/클라우드 추론 인프라 (대규모 동시성, 비용 민감)"),
-    )
     doc_search = bind_document_search("research")
-    chunks: List[Dict[str, Any]] = []
-    seen = set()
 
-    def _execute_search(query_list: List[str]):
-        for tech in TECHS:
-            for q in query_list:
-                for c in doc_search.invoke({"query": q, "technology": tech, "top_k": 5}):
-                    cid = c.get("chunk_id")
-                    if cid and cid not in seen:
-                        seen.add(cid)
-                        chunks.append(c)
+    def search(queries):
+        return [c for tech in TECHS for q in queries
+                for c in doc_search.invoke({"query": q, "technology": tech, "top_k": 5})]
 
-    _execute_search(QUERIES)
-
+    chunks = unique(search(QUERIES))
     # 미확보 기술이 있으면 WIDEN 질의로 1회 보완 (부록 A — 노드 내부 최대 1회)
     covered = {t for c in chunks if c.get("scope") == "direct" for t in c.get("applies_to", [])}
-    supplemental_searches = 0
-    if len(covered) < len(TECHS):
-        supplemental_queries = [q + WIDEN for q in QUERIES]
-        _execute_search(supplemental_queries)
-        supplemental_searches = len(supplemental_queries)
+    supplemental = [q + WIDEN for q in QUERIES] if len(covered) < len(TECHS) else []
+    chunks = unique(chunks + search(supplemental))
 
-    return evaluate(node="research", role="research", run_id=run_id, domain=domain,
-                    instruction=INSTRUCTION, chunks=chunks,
+    return evaluate(node="research", role="research", run_id=state.get("run_id", "default_run"),
+                    domain=domain_of(state), instruction=INSTRUCTION, chunks=chunks,
                     gap_reason="제공된 근거에서 확인하지 못함",
-                    extra_trace={"supplemental_searches": supplemental_searches})
+                    extra_trace={"supplemental_searches": len(supplemental)})

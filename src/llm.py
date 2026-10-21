@@ -53,9 +53,6 @@ class _CountingCache:
     def update(self, prompt: str, llm_string: str, return_val) -> None:
         self._inner.update(prompt, llm_string, return_val)
 
-    def clear(self, **kwargs) -> None:
-        self._inner.clear(**kwargs)
-
 
 def enable_cache(path: str = CACHE_PATH):
     """프롬프트 전문을 키로 응답을 재사용한다. 프롬프트가 바뀌면 자동으로 새로 생성한다."""
@@ -75,7 +72,7 @@ def provider() -> str:
     return os.getenv("LLM_PROVIDER") or settings()["llm"]["provider"]
 
 
-def get_llm(temperature: float | None = None):
+def get_llm():
     """설정값이 아니라 **실제로 적용된** 파라미터를 기록해 둔다.
 
     langchain 은 모델에 따라 temperature 를 조용히 버린다. 설정 파일의 값을 그대로
@@ -86,7 +83,7 @@ def get_llm(temperature: float | None = None):
     llm = init_chat_model(
         model_name(),
         model_provider=provider(),
-        temperature=cfg["temperature"] if temperature is None else temperature,
+        temperature=cfg["temperature"],
         **extra,
     )
     _effective.update(

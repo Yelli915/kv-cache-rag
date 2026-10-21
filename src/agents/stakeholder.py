@@ -4,12 +4,12 @@ Writes only stakeholder and trace. An Assessment's completed status denotes
 structural completion; R5 must still perform the human semantic review.
 """
 import json
+from src.agents.common import TECHS, domain_of
 from src.agents.stakeholder_contract import StakeholderDraft
 from src.output.validate import describe, numeric_errors
 from src.tools.web_search import WebEvidenceStore, format_signals
 from src.tools.web_store import digest, save_json, utcnow
 
-TECHNOLOGIES = ('TurboQuant', 'ITME')
 QUERIES = {
     'competitors': 'competing technology vendor response statement',
     'adopters': 'enterprise adoption deployment user statement barriers',
@@ -87,8 +87,8 @@ def make_stakeholder(store: WebEvidenceStore, *, writer=None):
         context_limit = config.get('web_context_chars', 40000)
         if type(context_limit) is not int or context_limit < 1000:
             raise ValueError('web_context_chars must be at least 1000')
-        domain = config.get('domain') or state.get('domain') or '데이터센터/클라우드'
-        fetched, allowed = {}, {tech: set() for tech in TECHNOLOGIES}
+        domain = domain_of(state)
+        fetched, allowed = {}, {tech: set() for tech in TECHS}
         pair_results, supplemented = {}, set()
         trace, errors = [], []
         successful_searches = 0
@@ -122,7 +122,7 @@ def make_stakeholder(store: WebEvidenceStore, *, writer=None):
                       error=str(exc))
             return got
 
-        for tech in TECHNOLOGIES:
+        for tech in TECHS:
             for group in QUERIES:
                 pair_results[tech, group] = collect(tech, group, 1)
         for (tech, group), present in list(pair_results.items()):
@@ -223,7 +223,7 @@ def make_stakeholder(store: WebEvidenceStore, *, writer=None):
             errors.append('all stakeholder searches failed; collection could not execute')
         covered = {(c['technology'], c['stakeholder_group']) for c in claims}
         gaps = {(g['technology'], g['item']): g for g in draft_gaps}
-        for tech in TECHNOLOGIES:
+        for tech in TECHS:
             for group in QUERIES:
                 if (tech, group) not in covered and (tech, group) not in gaps:
                     gaps[tech, group] = dict(role='stakeholder', technology=tech, item=group,

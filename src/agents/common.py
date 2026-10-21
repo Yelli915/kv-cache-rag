@@ -9,7 +9,6 @@
 - `run_node` — market. 기술별이 아니라 `## ①②③` 항목별 절이라 텍스트로 받는다.
 """
 
-from datetime import datetime, timezone
 from typing import Literal
 
 from langchain_core.output_parsers import StrOutputParser
@@ -20,6 +19,7 @@ from src.llm import get_llm
 from src.output.validate import CITATION_RE, describe, numeric_errors
 from src.schema import Assessment, Claim, Evidence, Gap, Source
 from src.tools.docs import format_chunks
+from src.tools.web_store import utcnow
 
 TECHS = ("TurboQuant", "ITME")
 
@@ -45,6 +45,19 @@ STRUCTURED_RULES = _RULES + """
 _TEMPLATE = PromptTemplate.from_template(
     "{instruction}\n\n{rules}\n\n#평가 도메인:\n{domain}\n\n#근거:\n{context}\n\n#작성:"
 )
+
+
+def domain_of(state) -> str:
+    """평가 도메인. State 에는 domain 필드가 없고 run_config 에 있다(설계서 §7)."""
+    return (state.get("run_config") or {}).get("domain") or "데이터센터/클라우드 추론 인프라"
+
+
+def unique(hits) -> list[dict]:
+    """검색 결과를 chunk_id 로 중복 제거한다. 처음 나온 순서를 지킨다."""
+    seen: dict[str, dict] = {}
+    for c in hits:
+        seen.setdefault(c["chunk_id"], c)
+    return list(seen.values())
 
 
 def run_node(instruction: str, domain: str, context: str) -> str:
@@ -139,7 +152,7 @@ def _failed(node, role, chunks, attempt, error, extra_trace) -> dict:
         Gap(role=role, technology=t, item=f"{t} 평가 생성 실패", reason=error) for t in TECHS])
     return {node: assessment.model_dump(), "trace": [{
         "node": node, "status": "failed", "attempt": attempt, "error": error,
-        "timestamp": datetime.now(timezone.utc).isoformat(), "chunks": len(chunks),
+        "timestamp": utcnow(), "chunks": len(chunks),
         **(extra_trace or {})}]}
 
 
@@ -212,7 +225,7 @@ def evaluate(*, node: str, role: str, run_id: str, domain: str, instruction: str
                             evidence=list(evidence.values()), gaps=gaps)
     return {node: assessment.model_dump(), "trace": [{
         "node": node, "status": status, "attempt": attempt,
-        "timestamp": datetime.now(timezone.utc).isoformat(), "chunks": len(chunks),
+        "timestamp": utcnow(), "chunks": len(chunks),
         "citations": len(valid), "invalid_citations": len(invalid),
         "number_problems": len(problems), "covered_techs": sorted(covered),
         **(extra_trace or {})}]}

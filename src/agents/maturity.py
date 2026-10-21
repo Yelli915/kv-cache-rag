@@ -12,9 +12,9 @@
 - 생성·인용 검증·Assessment 조립은 `common.evaluate` 가 한다.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from src.agents.common import TECHS, evaluate
+from src.agents.common import TECHS, domain_of, evaluate, unique
 from src.tools.docs import bind_document_search
 
 # ============================================================================
@@ -67,41 +67,25 @@ BASE_QUERIES = [
 ]
 
 
+# 기술 근거가 하나도 없을 때의 보완 질의 (부록 A — 노드 내부 최대 1회)
+SUPPLEMENT = {
+    "TurboQuant": "TurboQuant open-source code benchmark reproduce github HuggingFace kernel",
+    "ITME": "ITME FPGA ASIC emulation hardware testbed gem5 simulation prototype",
+}
+
+
 def maturity(state: Dict[str, Any]) -> Dict[str, Any]:
     """papers_core에서 TRL 실증 근거를 수집하고 Assessment를 반환한다."""
-    run_id = state.get("run_id", "default_run")
-    domain = state.get(
-        "domain",
-        state.get("run_config", {}).get("domain", "데이터센터/클라우드 추론 인프라"),
-    )
     doc_search = bind_document_search("maturity")    # papers_core, direct/comparison 강제
-    chunks: List[Dict[str, Any]] = []
-    seen = set()
 
-    def _execute_search(query_list: List[str], tech: str):
-        for q in query_list:
-            for c in doc_search.invoke({"query": q, "technology": tech, "top_k": 4}):
-                cid = c.get("chunk_id")
-                if cid and cid not in seen:
-                    seen.add(cid)
-                    chunks.append(c)
+    def search(tech, queries):
+        return [c for q in queries for c in doc_search.invoke({"query": q, "technology": tech, "top_k": 4})]
 
-    for tech in TECHS:
-        _execute_search(BASE_QUERIES, tech)
+    chunks = unique(c for tech in TECHS for c in search(tech, BASE_QUERIES))
+    missing = [t for t in TECHS if not any(t in c.get("applies_to", []) for c in chunks)]
+    chunks = unique(chunks + [c for t in missing for c in search(t, [SUPPLEMENT[t]])])
 
-    # 기술 근거가 하나도 없으면 기술별 질의로 1회 보완 (부록 A — 노드 내부 최대 1회)
-    supplemental_searches = 0
-    for tech in TECHS:
-        if not any(tech in c.get("applies_to", []) for c in chunks):
-            supp_q = (
-                "TurboQuant open-source code benchmark reproduce github HuggingFace kernel"
-                if tech == "TurboQuant"
-                else "ITME FPGA ASIC emulation hardware testbed gem5 simulation prototype"
-            )
-            _execute_search([supp_q], tech)
-            supplemental_searches += 1
-
-    return evaluate(node="maturity", role="maturity", run_id=run_id, domain=domain,
-                    instruction=MATURITY_SYSTEM_PROMPT, chunks=chunks,
+    return evaluate(node="maturity", role="maturity", run_id=state.get("run_id", "default_run"),
+                    domain=domain_of(state), instruction=MATURITY_SYSTEM_PROMPT, chunks=chunks,
                     gap_reason="TRL 상위 구간 미도달 또는 실증 데이터 미확인",
-                    extra_trace={"supplemental_searches": supplemental_searches})
+                    extra_trace={"supplemental_searches": len(missing)})

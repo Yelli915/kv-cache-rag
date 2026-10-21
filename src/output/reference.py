@@ -10,86 +10,37 @@
   URL 를 그것만으로는 채울 수 없다.
 """
 
+from src.state import ASSESSMENT_NODES
+
 GROUPS = [
     ("[A] Doc Pool 논문 (RAG 색인)", ["papers_core"]),
     ("[B] 풀 밖 색인 자료 (ecosystem · context)", ["ecosystem", "context"]),
 ]
 
-ASSESSMENT_NODES = [
-    "research",
-    "maturity",
-    "market",
-    "stakeholder",
-    "domain_assessment",
-]
+def _used(state: dict) -> tuple[list[dict], dict]:
+    """실제 Claim 이 쓴 Source(중복 제거)와 source_id -> 인용 위치(§9 — 인용 페이지를 적는다).
 
-
-def _used_source_ids_from_assessment(assessment: dict) -> set[str]:
-    """신형 Assessment에서 실제 Claim이 사용한 source_id만 추출한다."""
-    claims = assessment.get("claims") or []
-    evidence = assessment.get("evidence") or []
-
-    evidence_by_id = {
-        item.get("evidence_id"): item
-        for item in evidence
-        if item.get("evidence_id")
-    }
-
-    used_source_ids = set()
-
-    for claim in claims:
-        for evidence_id in claim.get("evidence_ids") or []:
-            item = evidence_by_id.get(evidence_id)
-
-            if not item:
-                continue
-
-            source_id = item.get("source_id")
-
-            if source_id:
-                used_source_ids.add(source_id)
-
-    return used_source_ids
+    후보로 검색됐지만 Claim 에 쓰이지 않은 자료는 빠진다.
+    """
+    sources, pages = {}, {}
+    for node_name in ASSESSMENT_NODES:
+        assessment = state.get(node_name) or {}
+        evidence = {e["evidence_id"]: e for e in assessment.get("evidence") or [] if e.get("evidence_id")}
+        used = {evidence[eid].get("source_id") for claim in assessment.get("claims") or []
+                for eid in claim.get("evidence_ids") or [] if eid in evidence} - {None, ""}
+        for source in assessment.get("sources") or []:
+            if source.get("source_id") in used:
+                sources[source["source_id"]] = source
+        for item in evidence.values():
+            if item.get("source_id") in used and item.get("location"):
+                pages.setdefault(item["source_id"], set()).add(item["location"])
+    return list(sources.values()), pages
 
 
 def _manifest_by_id(state: dict) -> dict:
     """setup 이 run_config.sources 에 넣어 둔 매니페스트를 source_id 로 색인한다."""
     sources = (state.get("run_config") or {}).get("sources") or []
     return {entry.get("id"): entry for entry in sources if entry.get("id")}
-
-
-def _cited_pages(state: dict) -> dict:
-    """source_id -> 본문이 실제 인용한 위치 목록 (§9 — 인용 페이지를 적는다)."""
-    pages: dict[str, set] = {}
-    for node_name in ASSESSMENT_NODES:
-        assessment = state.get(node_name) or {}
-        used = _used_source_ids_from_assessment(assessment)
-        for evidence in assessment.get("evidence") or []:
-            source_id = evidence.get("source_id")
-            if source_id in used and evidence.get("location"):
-                pages.setdefault(source_id, set()).add(evidence["location"])
-    return pages
-
-
-def _used_sources(state: dict) -> list[dict]:
-    """신형 Assessment에서 실제 사용된 Source를 모아 중복 제거한다."""
-    used = {}
-
-    for node_name in ASSESSMENT_NODES:
-        assessment = state.get(node_name) or {}
-
-        if "claims" not in assessment:
-            continue
-
-        used_source_ids = _used_source_ids_from_assessment(assessment)
-
-        for source in assessment.get("sources") or []:
-            source_id = source.get("source_id")
-
-            if source_id in used_source_ids:
-                used[source_id] = source
-
-    return list(used.values())
 
 
 def _date(value) -> str:
@@ -108,9 +59,9 @@ def _format_structured_sources(sources: list[dict], numbers: dict, pages: dict) 
     """신형 Source 구조를 Markdown REFERENCE 로 변환한다. 번호는 본문 인용과 맞춘다."""
     lines = ["## REFERENCE", ""]
 
-    rag_sources = [s for s in sources
-                   if s.get("collection") in {"papers_core", "ecosystem", "context"}]
-    web_sources = [s for s in sources if s not in rag_sources]
+    indexed = {"papers_core", "ecosystem", "context"}
+    rag_sources = [s for s in sources if s.get("collection") in indexed]
+    web_sources = [s for s in sources if s.get("collection") not in indexed]
 
     def entry(source: dict) -> str:
         number = numbers.get(source.get("source_id"), "?")
@@ -166,8 +117,9 @@ def build(state: dict) -> tuple[str, dict]:
     # 청크에는 제목·URL·버전이 없어 R4 가 source_id 를 title 자리에 넣는다. 서지 항목만
     # 매니페스트 값으로 덮는다(§9). run_id·collection·allowed_uses 는 Source 것을 지킨다.
     biblio = ("title", "url", "version", "publisher", "published_at", "landing")
+    sources, pages = _used(state)
     used = []
-    for source in _used_sources(state):
+    for source in sources:
         entry = manifest.get(source.get("source_id"), {})
         used.append(source | {k: entry[k] for k in biblio if entry.get(k)})
 
@@ -184,4 +136,4 @@ def build(state: dict) -> tuple[str, dict]:
             if number:
                 marks[evidence["evidence_id"]] = number
 
-    return _format_structured_sources(order, numbers, _cited_pages(state)), marks
+    return _format_structured_sources(order, numbers, pages), marks

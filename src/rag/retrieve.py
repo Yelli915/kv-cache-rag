@@ -78,13 +78,10 @@ def validate_hits(hits, collection, technology, perspective=None):
 
 
 def search(query: str, collection: str, technology: str = 'both',
-           top_k: int | None = None, mode: str = 'dense',
-           perspective: str | None = None) -> list[dict]:
-    """Return dense cosine hits. RRF requires new measured evidence and is disabled."""
+           top_k: int | None = None, perspective: str | None = None) -> list[dict]:
+    """Return dense cosine hits. BM25/RRF stay in eval/ until measured evidence justifies them."""
     top_k = 5 if top_k is None else top_k
     validate_request(query, collection, technology, top_k, perspective)
-    if mode != 'dense':
-        raise ValueError('only mode=dense is supported; RRF/BM25 need evaluation evidence')
     store = build()['stores'].get(collection)
     if store is None:
         return []

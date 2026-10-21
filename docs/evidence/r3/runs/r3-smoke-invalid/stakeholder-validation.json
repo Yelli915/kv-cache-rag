@@ -1,6 +1,0 @@
-{
-  "errors": [
-    "6 validation errors for StakeholderDraft\nclaims.0.technology\n  Field required [type=missing, input_value={'text': 'bad'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nclaims.0.kind\n  Field required [type=missing, input_value={'text': 'bad'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nclaims.0.evidence_ids\n  Field required [type=missing, input_value={'text': 'bad'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nclaims.0.stakeholder_group\n  Field required [type=missing, input_value={'text': 'bad'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nclaims.0.actor\n  Field required [type=missing, input_value={'text': 'bad'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nclaims.0.context\n  Field required [type=missing, input_value={'text': 'bad'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing"
-  ],
-  "review_status": "pending"
-}

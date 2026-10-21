@@ -15,7 +15,8 @@ from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import FAISS
 from src.rag import retrieve
 from src.tools.docs import bind_document_search
-from src.tools.web_search import WebEvidenceStore, FetchedPage, bind_web_tools
+from src.tools.web_fetch import FetchedPage
+from src.tools.web_search import WebEvidenceStore, bind_web_tools
 from src.agents.stakeholder import make_stakeholder
 from src.tools.web_store import save_json, utcnow
 

@@ -1306,9 +1306,6 @@ pdf = [
     { name = "markdown" },
     { name = "weasyprint" },
 ]
-test = [
-    { name = "pytest" },
-]
 
 [package.dev-dependencies]
 dev = [
@@ -1330,7 +1327,6 @@ requires-dist = [
     { name = "markdown", marker = "extra == 'pdf'", specifier = ">=3.6" },
     { name = "pdfplumber", specifier = ">=0.11.8" },
     { name = "pypdf", specifier = ">=5.1" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
@@ -1341,7 +1337,7 @@ requires-dist = [
     { name = "transformers", specifier = ">=4.57" },
     { name = "weasyprint", marker = "extra == 'pdf'", specifier = ">=62" },
 ]
-provides-extras = ["test", "pdf"]
+provides-extras = ["pdf"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.1.1" }]

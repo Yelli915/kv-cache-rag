@@ -10,6 +10,9 @@ human review worksheet에서 사람이 확인한다.
 """
 
 import re
+from functools import lru_cache
+
+from src.state import ASSESSMENT_NODES
 
 CITATION_RE = re.compile(r"\[([0-9a-f]{12})\]")
 
@@ -44,23 +47,29 @@ def qualifiers_for(value: float, unit: str, technology: str) -> tuple[str, ...]:
     return rule[1] if rule and technology in (rule[0], "both") else ()
 
 
-def numbers(text: str) -> set[tuple[float, str]]:
-    """단위가 붙은 수치만 뽑는다. `2.5-3.5 bits` 같은 범위는 양 끝을 모두 넣는다."""
-    found = set()
-    for unit, pattern in UNITS.items():
-        for m in re.finditer(rf"{_NUMBER}(?:\s*[-–~]\s*(\d+(?:\.\d+)?))?\s*{pattern}", text, re.I):
-            found.update((float(v), unit) for v in m.groups() if v)
-    return found
+_UNIT_RES = {unit: re.compile(rf"{_NUMBER}(?:\s*[-–~]\s*(\d+(?:\.\d+)?))?\s*{pattern}", re.I)
+              for unit, pattern in UNITS.items()}
 
 
-def bare_numbers(text: str) -> set[float]:
+@lru_cache(maxsize=4096)
+def numbers(text: str) -> frozenset[tuple[float, str]]:
+    """단위가 붙은 수치만 뽑는다. `2.5-3.5 bits` 같은 범위는 양 끝을 모두 넣는다.
+
+    같은 인용 원문을 Claim·줄·문장마다 다시 대조하므로 결과를 원문별로 기억한다.
+    """
+    return frozenset((float(v), unit) for unit, rx in _UNIT_RES.items()
+                     for m in rx.finditer(text) for v in m.groups() if v)
+
+
+@lru_cache(maxsize=4096)
+def bare_numbers(text: str) -> frozenset[float]:
     """단위 없이 홀로 선 수치. 논문 표(`KV Size 2.5`)·수식(`b = 2`)은 단위를 따로 적는다.
 
     `8B`(모델 크기)처럼 글자가 붙은 숫자와, `128 MB` 처럼 띄어 쓴 다른 단위가 붙은 숫자는
     뺀다 — 그림 축 눈금 `128 MB` 로 `128GB` 를 통과시킨 적이 있다.
     """
-    return {float(v) for v in re.findall(
-        r"(?<![\w.])(\d+(?:\.\d+)?)(?![\w]|\.\d|\s*[A-Za-z%×])", text)}
+    return frozenset(float(v) for v in re.findall(
+        r"(?<![\w.])(\d+(?:\.\d+)?)(?![\w]|\.\d|\s*[A-Za-z%×])", text))
 
 
 def describe(problems: list[dict]) -> str:
@@ -129,157 +138,62 @@ RAG_NODES = {
 }
 
 
-def _structured_errors(
-    node_name: str,
-    assessment: dict,
-    current_run_id: str | None,
-    numeric: bool = True,
-) -> list[dict]:
+def _structured_errors(node_name: str, assessment: dict, current_run_id: str | None,
+                       numeric: bool = True) -> list[dict]:
     """신형 Claim → Evidence → Source 구조를 검사한다."""
     errors = []
-
-    claims = assessment.get("claims") or []
-    evidence_list = assessment.get("evidence") or []
-    source_list = assessment.get("sources") or []
-
-    evidence_by_id = {
-        evidence.get("evidence_id"): evidence
-        for evidence in evidence_list
-        if evidence.get("evidence_id")
-    }
-
-    source_by_id = {
-        source.get("source_id"): source
-        for source in source_list
-        if source.get("source_id")
-    }
-
+    evidence_by_id = {e.get("evidence_id"): e for e in assessment.get("evidence") or []
+                      if e.get("evidence_id")}
+    source_by_id = {s.get("source_id"): s for s in assessment.get("sources") or []
+                    if s.get("source_id")}
+    # allowed_uses 는 역할 이름이다. State 키 domain_assessment 의 역할은 domain 이다.
+    expected_use = "domain" if node_name == "domain_assessment" else node_name
     seen_claim_ids = set()
 
-    for claim in claims:
+    for claim in assessment.get("claims") or []:
         claim_id = claim.get("claim_id")
-
         if not claim_id:
-            errors.append({
-                "node": node_name,
-                "kind": "claim_id 누락",
-                "ids": [],
-            })
+            errors.append({"node": node_name, "kind": "claim_id 누락", "ids": []})
             continue
 
-        if claim_id in seen_claim_ids:
-            errors.append({
-                "node": node_name,
-                "kind": "claim_id 중복",
-                "ids": [claim_id],
-            })
+        def error(kind, ids=()):
+            errors.append({"node": node_name, "claim_id": claim_id, "kind": kind, "ids": list(ids)})
 
+        if claim_id in seen_claim_ids:
+            errors.append({"node": node_name, "kind": "claim_id 중복", "ids": [claim_id]})
         seen_claim_ids.add(claim_id)
 
         evidence_ids = claim.get("evidence_ids") or []
-        claim_kind = claim.get("kind")
-
-        # 사실 Claim은 직접 근거 필수
-        if claim_kind == "fact" and not evidence_ids:
-            errors.append({
-                "node": node_name,
-                "claim_id": claim_id,
-                "kind": "사실 Claim 근거 누락",
-                "ids": [],
-            })
-
-        # 추론/가설도 전제 근거 필수
-        if claim_kind in {"inference", "hypothesis"} and not evidence_ids:
-            errors.append({
-                "node": node_name,
-                "claim_id": claim_id,
-                "kind": "추론·가설 전제 근거 누락",
-                "ids": [],
-            })
+        if not evidence_ids:
+            if claim.get("kind") == "fact":                       # 사실 Claim은 직접 근거 필수
+                error("사실 Claim 근거 누락")
+            elif claim.get("kind") in {"inference", "hypothesis"}:  # 추론/가설도 전제 근거 필수
+                error("추론·가설 전제 근거 누락")
 
         for evidence_id in evidence_ids:
             evidence = evidence_by_id.get(evidence_id)
-
             if evidence is None:
-                errors.append({
-                    "node": node_name,
-                    "claim_id": claim_id,
-                    "kind": "Evidence 없음",
-                    "ids": [evidence_id],
-                })
+                error("Evidence 없음", [evidence_id])
                 continue
 
             source_id = evidence.get("source_id")
-
             if not source_id or source_id not in source_by_id:
-                errors.append({
-                    "node": node_name,
-                    "claim_id": claim_id,
-                    "kind": "Source 연결 실패",
-                    "ids": [evidence_id],
-                })
-
-            evidence_run_id = evidence.get("run_id")
-
-            if (
-                current_run_id
-                and evidence_run_id
-                and evidence_run_id != current_run_id
-            ):
-                errors.append({
-                    "node": node_name,
-                    "claim_id": claim_id,
-                    "kind": "다른 run의 Evidence",
-                    "ids": [evidence_id],
-                })
-
-            source = source_by_id.get(source_id, {})
-            source_run_id = source.get("run_id")
-
-            if (
-                current_run_id
-                and source_run_id
-                and source_run_id != current_run_id
-            ):
-                errors.append({
-                    "node": node_name,
-                    "claim_id": claim_id,
-                    "kind": "다른 run의 Source",
-                    "ids": [source_id],
-                })
+                error("Source 연결 실패", [evidence_id])
+            if current_run_id and evidence.get("run_id") not in (None, "", current_run_id):
+                error("다른 run의 Evidence", [evidence_id])
+            source_run_id = source_by_id.get(source_id, {}).get("run_id")
+            if current_run_id and source_run_id and source_run_id != current_run_id:
+                error("다른 run의 Source", [source_id])
 
             # allowed_uses가 존재하면 노드 사용 권한 검사
             allowed_uses = evidence.get("allowed_uses")
-
-            if allowed_uses is not None:
-                expected_use = (
-                    "domain"
-                    if node_name == "domain_assessment"
-                    else node_name
-                )
-
-                if expected_use not in allowed_uses:
-                    errors.append({
-                        "node": node_name,
-                        "claim_id": claim_id,
-                        "kind": "허용되지 않은 Evidence 사용",
-                        "ids": [evidence_id],
-                    })
+            if allowed_uses is not None and expected_use not in allowed_uses:
+                error("허용되지 않은 Evidence 사용", [evidence_id])
 
             # RAG 자료의 collection 범위 검사
-            if node_name in RAG_NODES:
-                collection = evidence.get("collection")
-
-                if (
-                    collection
-                    and collection not in RAG_NODES[node_name]
-                ):
-                    errors.append({
-                        "node": node_name,
-                        "claim_id": claim_id,
-                        "kind": "허용되지 않은 collection",
-                        "ids": [evidence_id],
-                    })
+            collection = evidence.get("collection")
+            if node_name in RAG_NODES and collection and collection not in RAG_NODES[node_name]:
+                error("허용되지 않은 collection", [evidence_id])
 
         # ID가 맞아도 수치는 지시문이나 다른 실험에서 올 수 있다. 인용 원문과 대조한다.
         quotes = {eid: evidence_by_id[eid].get("quote") or ""
@@ -307,36 +221,20 @@ def check(state) -> dict:
     numeric = bool((state.get("run_config") or {}).get("numeric_check"))
 
     errors = []
-
-    node_names = [
-        "research",
-        "maturity",
-        "market",
-        "stakeholder",
-        "domain_assessment",
-    ]
-
-    for node_name in node_names:
+    for node_name in ASSESSMENT_NODES:
         assessment = state.get(node_name) or {}
 
         if not assessment:
             continue
 
-        errors.extend(
-            _structured_errors(
-                node_name=node_name,
-                assessment=assessment,
-                current_run_id=current_run_id,
-                numeric=numeric,
-            )
-        )
+        errors.extend(_structured_errors(node_name, assessment, current_run_id, numeric))
 
     # conflicts == [] 는 정상일 수 있으므로 오류로 처리하지 않는다.
 
     return {
         "validation": {
             "errors": errors,
-            "checked_nodes": node_names,
+            "checked_nodes": list(ASSESSMENT_NODES),
         },
         "trace": [{
             "node": "validate",

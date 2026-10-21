@@ -1,7 +1,7 @@
 """제출본 저장 노드 — 담당: R5 (설계서 §9, 부록 A 의 `Z` 노드)
 
 PDF 렌더링 자체는 fixture 로 대체한다. 확인하는 것은 계약이다 — 어디에 무엇을 남기고
-무엇을 막는지.
+무엇을 막는지. 노드 아래의 가드(`build_submission`)와 품질 점검(`quality_checks`)도 여기서 본다.
 """
 
 import json
@@ -119,3 +119,14 @@ def test_system_library_failure_does_not_kill_the_graph(state, monkeypatch, tmp_
     assert update["report_paths"] == [str(tmp_path / "r5-test" / "report.md")]
     assert update["trace"][0]["status"] == "partial"
     assert "libpango" in json.loads((tmp_path / "r5-test" / "submission.json").read_text())["reason"]
+
+
+def test_basic_report_passes_every_quality_check():
+    assert all(check["passed"] for check in node.quality_checks(REPORT))
+
+
+def test_missing_markdown_blocks_submission(tmp_path):
+    result = node.build_submission(markdown_path=tmp_path / "missing.md",
+                                   final_path=tmp_path / "final.pdf")
+
+    assert result["generated"] is False and "Markdown 파일 없음" in result["reason"]

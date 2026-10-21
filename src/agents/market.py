@@ -9,13 +9,13 @@ papers_core 를 조회하면 의미적으로 가까운 기술 서술이 시장 �
 """
 
 import re
-from datetime import datetime, timezone
 
-from src.agents.common import NUMBER_FEEDBACK, number_problems, register, run_node
+from src.agents.common import (NUMBER_FEEDBACK, TECHS, domain_of, number_problems, register,
+                               run_node, unique)
 from src.output.validate import CITATION_RE, describe
 from src.schema import Assessment, Claim, Gap
-from src.tools.docs import format_chunks
-from src.tools.docs import bind_document_search
+from src.tools.docs import bind_document_search, format_chunks
+from src.tools.web_store import utcnow
 
 INSTRUCTION = """너는 시장성 평가 담당이다. 아래 세 절의 제목을 **그대로** 쓰고 각각 채운다.
 
@@ -34,7 +34,6 @@ INSTRUCTION = """너는 시장성 평가 담당이다. 아래 세 절의 제목�
 
 논문 성능 수치와 시장 매출을 섞지 않는다."""
 
-TECHS = ["TurboQuant", "ITME"]
 QUERIES = [
     ("시장 규모 성장성 추론 메모리 비용", "both"),
     ("상용화 제품 출시 발표 실제 배포 채택", "both"),
@@ -73,16 +72,12 @@ def _gaps_from_text(text: str, reason: str) -> list[Gap]:
 
 def market(state) -> dict:
     run_id = state.get("run_id", "default_run")
-    domain = (state.get("run_config") or {}).get("domain", "데이터센터/클라우드")
+    domain = domain_of(state)
     search = bind_document_search("market")      # ecosystem 고정 (§3)
 
-    chunks, by_id = [], {}
-    for query, technology in QUERIES:
-        for chunk in search.invoke({"query": query, "technology": technology, "top_k": 5}):
-            cid = chunk.get("chunk_id")
-            if cid and cid not in by_id:
-                by_id[cid] = chunk
-                chunks.append(chunk)
+    chunks = unique(c for query, technology in QUERIES
+                    for c in search.invoke({"query": query, "technology": technology, "top_k": 5}))
+    by_id = {c["chunk_id"]: c for c in chunks}
 
     if not chunks:
         # §5 "자료가 없으면 미확인" — 근거 0건으로 시장성을 생성하지 않는다.
@@ -91,7 +86,7 @@ def market(state) -> dict:
                 reason="ecosystem 컬렉션 검색 결과 0건") for technology in TECHS])
         return {"market": assessment.model_dump(),
                 "trace": [{"node": "market", "status": "failed", "attempt": 1,
-                           "timestamp": datetime.now(timezone.utc).isoformat(), "chunks": 0}]}
+                           "timestamp": utcnow(), "chunks": 0}]}
 
     context = format_chunks(chunks)
     text = run_node(INSTRUCTION, domain, context)
@@ -142,7 +137,7 @@ def market(state) -> dict:
     return {
         "market": assessment.model_dump(),
         "trace": [{"node": "market", "status": status, "attempt": attempt,
-                   "timestamp": datetime.now(timezone.utc).isoformat(),
+                   "timestamp": utcnow(),
                    "chunks": len(chunks), "citations": len(valid),
                    "number_problems": len(problems),
                    "invalid_citations": len(invalid), "covered_techs": sorted(covered)}],

@@ -226,3 +226,45 @@ def test_two_column_split_uses_the_page_bbox():
 
     assert index._page_text(Page()) == "half\nhalf"
     assert crops == [(100, 0, 400.0, 800), (400.0, 0, 700, 800)]
+
+
+def test_page_cache_reuses_extraction_until_the_source_changes(tmp_path, monkeypatch):
+    """PDF 추출 캐시 — 같은 원문이면 다시 파싱하지 않고, 해시가 바뀌면 다시 파싱한다."""
+    from src.rag import index
+
+    calls = []
+    monkeypatch.setattr(index, "PAGE_CACHE", tmp_path)
+    monkeypatch.setattr(index, "_extract_pdf", lambda path: calls.append(path) or [(1, "본문", [["a", "b"]])])
+    entry = {"id": "paper", "sha256": "aaa", "local_path": "paper.pdf"}
+
+    assert index._cached_pdf(entry) == [(1, "본문", [["a", "b"]])]
+    assert index._cached_pdf(entry) == [(1, "본문", [["a", "b"]])] and len(calls) == 1
+    index._cached_pdf(entry | {"sha256": "bbb"})
+    assert len(calls) == 2
+
+
+def test_vector_cache_reuses_embeddings_until_a_chunk_changes(tmp_path, monkeypatch):
+    """청크 벡터 캐시 — chunk_id(본문 해시)가 하나라도 바뀌면 다시 임베딩한다."""
+    from langchain_core.documents import Document
+    from langchain_core.embeddings import Embeddings
+
+    from src.rag import index
+
+    class Fake(Embeddings):
+        calls = 0
+
+        def embed_documents(self, texts):
+            Fake.calls += 1
+            return [[1.0, 0.0] for _ in texts]
+
+        def embed_query(self, text):
+            return [1.0, 0.0]
+
+    monkeypatch.setattr(index, "VECTOR_CACHE", tmp_path)
+    docs = [Document(page_content="a", metadata={"chunk_id": "c1"})]
+
+    index._faiss(docs, Fake())
+    store = index._faiss(docs, Fake())
+    assert Fake.calls == 1 and store.index.ntotal == 1
+    index._faiss([Document(page_content="b", metadata={"chunk_id": "c2"})], Fake())
+    assert Fake.calls == 2

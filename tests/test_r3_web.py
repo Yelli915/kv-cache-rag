@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import pytest
 from src.tools import web_search as web
+from src.tools.web_fetch import FetchedPage
 
 HTML = '''<html><head><title>Deployment notes</title>
 <meta property="og:site_name" content="Example Lab">
@@ -13,12 +14,16 @@ HTML = '''<html><head><title>Deployment notes</title>
 
 
 def store(tmp_path, run='run-one', **kwargs):
-    assert hasattr(web, 'WebEvidenceStore'), 'body evidence store is missing'
     return web.WebEvidenceStore(run, root=tmp_path, **kwargs)
 
 
-def transport(url, **kwargs):
-    return web.FetchedPage(url, 200, {'content-type': 'text/html'}, HTML.encode())
+def serving(body=HTML, status=200, final_url=None):
+    """요청 URL(또는 리다이렉트된 final_url)로 body 를 돌려주는 가짜 transport."""
+    return lambda url, **k: FetchedPage(final_url or url, status, {'content-type': 'text/html'},
+                                            body.encode())
+
+
+transport = serving()
 
 
 def searcher(query, top_k):
@@ -57,7 +62,7 @@ def test_fetch_extracts_body_provenance_hash_and_paragraph_evidence(tmp_path):
 @pytest.mark.parametrize('status, body', [(403, HTML), (200, '<html><script>render()</script></html>'),
                                         (200, '<html><body>Access denied</body></html>')])
 def test_fetch_failure_never_produces_evidence(tmp_path, status, body):
-    s = store(tmp_path, transport=lambda url, **k: web.FetchedPage(url, status, {'content-type': 'text/html'}, body.encode()))
+    s = store(tmp_path, transport=serving(body, status))
     r = s.fetch('https://example.org/article')
     assert r['status'] == 'failed'
     assert 'evidence' not in r
@@ -92,19 +97,17 @@ def test_bad_run_id_and_private_urls_blocked(tmp_path):
     assert s.manifest['sources'] == {}
 
 
-def test_bound_tools_require_run_context_and_preserve_signature(tmp_path):
+def test_bound_tools_preserve_signature(tmp_path):
     s = store(tmp_path, transport=transport, searcher=searcher)
     search, fetch = web.bind_web_tools(s)
     assert set(fetch.args) == {'url'}
     assert set(search.args) == {'query', 'technology', 'top_k'}
     assert fetch.invoke({'url': 'https://example.org/article'})['status'] == 'ok'
-    with pytest.raises(RuntimeError, match='run'):
-        web.search_market_signals.invoke({'query': 'q'})
 
 
 def test_changed_body_gets_new_id_in_different_run(tmp_path):
     a = store(tmp_path, transport=transport).fetch('https://example.org/a')
-    b = store(tmp_path, run='two', transport=lambda url, **k: web.FetchedPage(url, 200, {'content-type': 'text/html'}, HTML.replace('Kim', 'Lee').encode())).fetch('https://example.org/a')
+    b = store(tmp_path, run='two', transport=serving(HTML.replace('Kim', 'Lee'))).fetch('https://example.org/a')
     assert a['source']['source_id'] != b['source']['source_id']
 
 
@@ -118,21 +121,21 @@ def test_snapshot_tampering_blocks_cached_evidence(tmp_path):
 
 
 def test_redirected_source_uses_final_url(tmp_path):
-    s = store(tmp_path, transport=lambda url, **k: web.FetchedPage('https://example.org/final', 200, {'content-type': 'text/html'}, HTML.encode()))
+    s = store(tmp_path, transport=serving(final_url='https://example.org/final'))
     r = s.fetch('https://example.org/original')
     assert r['source']['url'] == 'https://example.org/final'
     assert r['source']['requested_url'] == 'https://example.org/original'
 
 
 def test_redirect_to_private_address_is_rejected(tmp_path):
-    s = store(tmp_path, transport=lambda url, **k: web.FetchedPage('http://127.0.0.1/', 200, {'content-type': 'text/html'}, HTML.encode()))
+    s = store(tmp_path, transport=serving(final_url='http://127.0.0.1/'))
     assert s.fetch('https://example.org/a')['status'] == 'failed'
     assert not s.manifest['evidence']
 
 
 def test_missing_date_stays_unknown_not_retrieved_date(tmp_path):
     html = HTML.replace('<meta property="article:published_time" content="2026-09-01">', '')
-    s = store(tmp_path, transport=lambda url, **k: web.FetchedPage(url, 200, {'content-type': 'text/html'}, html.encode()))
+    s = store(tmp_path, transport=serving(html))
     r = s.fetch('https://example.org/a')
     assert r['published_at'] is None
     assert r['retrieved_at']
@@ -156,6 +159,6 @@ def test_format_signals_blocks_candidates_even_with_long_snippet():
 
 
 def test_non_200_untrusted_long_error_page_is_rejected(tmp_path):
-    s = store(tmp_path, transport=lambda url, **k: web.FetchedPage(url, 200, {'content-type': 'text/html'},
-        ('<html><head><title>Just a moment...</title></head><body>' + 'Checking your browser. ' * 20 + '</body></html>').encode()))
+    s = store(tmp_path, transport=serving(
+        '<html><head><title>Just a moment...</title></head><body>' + 'Checking your browser. ' * 20 + '</body></html>'))
     assert s.fetch('https://example.org/a')['status'] == 'failed'
