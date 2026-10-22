@@ -104,7 +104,11 @@ flowchart TD
 │   ├── schema.py            # 공용 계약 (Claim/Assessment/Source/Evidence/Gap/Synthesis/Event)
 │   ├── state.py             # State (설계서 §7 표 14행 / 17필드)
 │   └── graph.py             # LangGraph 배선
+├── scripts/                 # 원문 수집(prepare_sources)·색인 점검(ingest)·검토 열람(review_reader)
 ├── eval/                    # 검색 품질 평가 (golden set, Hit@K/MRR@K)
+├── tests/                   # pytest 단위·통합 테스트 (API 키·원문 불필요)
+├── docs/                    # 계약(interface.md)·결정 기록(history.md)·실측 증거(evidence/)
+├── sources.json             # 수집 대상 원문 목록 (컬렉션·적용 기술·excerpt 범위)
 ├── reviews/verdicts.json    # 내용 검토 판정 원장 (커밋 대상)
 ├── config/settings.yaml     # 실행 설정
 ├── runs/                    # run_id별 실행 스냅샷·결과·trace (Git 제외)
@@ -194,7 +198,7 @@ uv run python -m scripts.review_reader <run_id> --claim <claim_id>   # 하나만
 
 | 열 | 값 |
 |---|---|
-| `review_result` | `확인` 또는 `부결` (`통과`·`승인`·`ok` / `반려`·`reject` 도 받는다) |
+| `review_result` | `확인` 또는 `부결` (`통과`·`승인`·`ok`·`pass`·`approved` / `반려`·`reject`·`rejected`·`fail` 도 받는다) |
 | `reviewer` | 검토자 이름 |
 | `review_comment` | 사유. **부결이면 보고서 §6 에 그대로 실린다** |
 
@@ -327,11 +331,19 @@ REFERENCE          [A] Doc Pool 논문  [B] 풀 밖 색인(ecosystem·context)  
 
 | 이름 | 담당 | 주요 산출물 |
 |---|---|---|
-| 김민 | Graph & Runtime · 통합 | State(§7 14행/17필드), 공용 `schema.py`, LangGraph 배선, run_id 기반 실행 제어, 인터페이스 정합과 통합 테스트(#13), CI |
-| 권수진 | RAG 인프라 | 3 컬렉션 구성(excerpt 페이징), SHA-256·쪽수 매니페스트, 표/수식 깨짐 검토 마킹, 검색 평가셋 |
-| 정승원 | 검색 계층·시장성·이해관계자 | dense 코사인 검색, 역할별 컬렉션·관점 잠금, 웹 근거 수집·스냅샷, 이해관계자 평가 노드 |
-| 권예리 | 평가 에이전트 | 기술조사·TRL 규칙표·도메인 노드, 검색 품질 실측 스크립트 |
-| 박인기 | 종합·출력 | 구조 강제 종합, 인용 검증, 내용 검토 worksheet, REFERENCE 3구분, PDF 생성 |
+| 김민 | Graph & Runtime · 통합 | State·공용 schema, LangGraph 배선, run_id 실행 제어, 통합 테스트(#13), CI(#18) |
+| 권수진 | RAG 인프라 | 청킹·임베딩·인덱스(#11), 3 컬렉션 구성, 매니페스트, 실패 질의 분석 |
+| 정승원 | 검색 계층·이해관계자 | dense 검색, 역할별 컬렉션 잠금, 웹 근거 수집, 이해관계자 노드(#2) |
+| 권예리 | 평가 에이전트 | 기술조사·TRL·도메인 노드(#3), R4 테스트(#12), Worker Task 전환(#20)·README 정리(OW 브랜치) |
+| 박인기 | 종합·출력 | 종합, 인용 검증, 내용 검토 worksheet, REFERENCE, PDF(#8) |
+
+**v2 — 권예리 개인 작업 (2026-10-21~22)**
+팀 main #18(`b687e3b`)에서 분기했다. Orchestrator-Workers 브랜치(10-07)는 들어 있지 않다.
+
+- Gemini 전환, 평가 노드를 구조화 출력으로 통합(`common.evaluate`)
+- 수치 검증과 변조 탐지율 평가
+- 2단 PDF 추출 수정(Hit@5 0.43 → 0.68), 골든셋 28문항
+- 문서·증거 정리, CI CPU torch 고정, langchain-community 제거
 
 ---
 
