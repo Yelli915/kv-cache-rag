@@ -1,0 +1,128 @@
+{
+  "claims": [
+    {
+      "text": "합성 인터뷰에서 Kim은 TurboQuant 커널 검토를 언급했다.",
+      "technology": "TurboQuant",
+      "kind": "fact",
+      "evidence_ids": [
+        "e-web-6f394e4f0bcf9de262824b1a46cf5ddc92265aac4df86f5ea62b21a358b85d2f"
+      ],
+      "explanation": "",
+      "stakeholder_group": "developers",
+      "actor": "Kim (synthetic fixture)",
+      "statement_date": null,
+      "context": "실제 평가에 사용하지 않는 테스트 인터뷰",
+      "claim_id": "claim-325c0b3f06d81aabd5777999be01a650026863332f4b8d105b970854eaca774f"
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c",
+      "run_id": "r3-smoke",
+      "collection": "web",
+      "url": "https://example.org/synthetic",
+      "requested_url": "https://example.org/synthetic",
+      "final_url": "https://example.org/synthetic",
+      "title": "Synthetic stakeholder interview",
+      "institution": "R3 Fixture Lab",
+      "author": null,
+      "published_at": "2026-09-22",
+      "retrieved_at": "2026-09-22T01:16:55.985133+00:00",
+      "version": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6",
+      "source_type": "미확인",
+      "allowed_uses": [
+        "stakeholder"
+      ],
+      "snapshot_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
+      "sha256": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6",
+      "body_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.txt",
+      "body_sha256": "20b9c96e0f4308e20af7d03898f3d375ff93abbc1cadf2f418ce27bd3cd18f01"
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "e-web-7a3abf87a2fdccf6709680db564885f96b1244d999ffc5c533b1d4a90055eef8",
+      "source_id": "web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c",
+      "run_id": "r3-smoke",
+      "collection": "web",
+      "quote": "Synthetic interview, not a real finding",
+      "location": "paragraph:1:chars:0-39",
+      "allowed_uses": [
+        "stakeholder"
+      ],
+      "snapshot_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
+      "sha256": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6"
+    },
+    {
+      "evidence_id": "e-web-6f394e4f0bcf9de262824b1a46cf5ddc92265aac4df86f5ea62b21a358b85d2f",
+      "source_id": "web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c",
+      "run_id": "r3-smoke",
+      "collection": "web",
+      "quote": "Developer Kim said TurboQuant integration requires testing the serving kernels. This synthetic interview exists only to verify source and evidence linkage; it is not a statement by a real person.",
+      "location": "paragraph:2:chars:0-195",
+      "allowed_uses": [
+        "stakeholder"
+      ],
+      "snapshot_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
+      "sha256": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6"
+    },
+    {
+      "evidence_id": "e-web-3a4fcc07405020400a954cf5afa0f45320286c67cb0a2bfb4afea5ed993132ab",
+      "source_id": "web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c",
+      "run_id": "r3-smoke",
+      "collection": "web",
+      "quote": "ITME deployment would require reviewing the target hardware configuration. This synthetic material does not establish any real adoption, investment, or competitor response.",
+      "location": "paragraph:3:chars:0-172",
+      "allowed_uses": [
+        "stakeholder"
+      ],
+      "snapshot_path": "runs/r3-smoke/web/snapshots/web-ce253b85d2028721103db311c2d4a465ec8140812264a8d939448af3a396d18c.html",
+      "sha256": "b0322c7eb1f8e640b571ea7e2a8aac6d0bea82e5723887d441260075588bd2b6"
+    }
+  ],
+  "gaps": [
+    {
+      "role": "stakeholder",
+      "technology": "TurboQuant",
+      "item": "competitors",
+      "reason": "직접 반응 또는 근거 있는 추론을 확인하지 못함"
+    },
+    {
+      "role": "stakeholder",
+      "technology": "TurboQuant",
+      "item": "adopters",
+      "reason": "직접 반응 또는 근거 있는 추론을 확인하지 못함"
+    },
+    {
+      "role": "stakeholder",
+      "technology": "TurboQuant",
+      "item": "investors",
+      "reason": "직접 반응 또는 근거 있는 추론을 확인하지 못함"
+    },
+    {
+      "role": "stakeholder",
+      "technology": "ITME",
+      "item": "competitors",
+      "reason": "직접 반응 또는 근거 있는 추론을 확인하지 못함"
+    },
+    {
+      "role": "stakeholder",
+      "technology": "ITME",
+      "item": "adopters",
+      "reason": "직접 반응 또는 근거 있는 추론을 확인하지 못함"
+    },
+    {
+      "role": "stakeholder",
+      "technology": "ITME",
+      "item": "developers",
+      "reason": "직접 반응 또는 근거 있는 추론을 확인하지 못함"
+    },
+    {
+      "role": "stakeholder",
+      "technology": "ITME",
+      "item": "investors",
+      "reason": "직접 반응 또는 근거 있는 추론을 확인하지 못함"
+    }
+  ],
+  "status": "partial"
+}

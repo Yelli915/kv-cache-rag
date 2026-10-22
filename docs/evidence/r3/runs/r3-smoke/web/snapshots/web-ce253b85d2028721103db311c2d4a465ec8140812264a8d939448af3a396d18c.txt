@@ -1,5 +1,0 @@
-Synthetic interview, not a real finding
-
-Developer Kim said TurboQuant integration requires testing the serving kernels. This synthetic interview exists only to verify source and evidence linkage; it is not a statement by a real person.
-
-ITME deployment would require reviewing the target hardware configuration. This synthetic material does not establish any real adoption, investment, or competitor response.

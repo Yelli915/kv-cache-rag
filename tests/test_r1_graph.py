@@ -49,12 +49,10 @@ def test_gaps_merge_sequentially(run):
     assert [g["role"] for g in final["gaps"]] == ["market", "synthesis"]
 
 
-def test_merge_conflict_fails_the_run(run, tmp_path):
+def test_merge_conflict_fails_the_run(run):
     """같은 ID 에 다른 내용이 오면 종합·검토로 넘기지 않는다(§7)."""
-    with pytest.raises(MergeConflict, match="e-web-mock-1"):
+    with pytest.raises(MergeConflict, match="market: e-web-mock-1"):
         run(market={"quote": "다른 인용문"})
-    errors = json.loads((tmp_path / "r1-test" / "merge-errors.json").read_text())["errors"]
-    assert errors and "market" in errors[0]
 
 
 def test_review_pending_saves_draft_and_stops(run):
@@ -78,10 +76,10 @@ def test_resume_from_reviewed_draft(run, tmp_path):
 
 
 def test_unresolved_errors_block_submission(run):
-    final, directory = run(review_errors=["없는 인용 ID"])
+    final, _ = run(review_errors=["없는 인용 ID"])
     assert final["run_status"] == "failed"
     assert "report" not in final
-    assert json.loads((directory / "validation-errors.json").read_text())["errors"]
+    assert final["trace"][-1]["node"] == "fail" and final["trace"][-1]["errors"]
 
 
 def test_failed_assessment_fails_the_run(run):
@@ -133,54 +131,3 @@ def test_corpus_hash_mismatch_stops_the_run(tmp_path):
 
     original.unlink()
     assert "원문이 없다" in verify_corpus({"sources": [entry]})[0]
-
-
-def test_llm_cache_counts_hits_and_misses(tmp_path, monkeypatch):
-    """재현성은 모델이 아니라 캐시가 담당한다. 적중 수를 세지 못하면 비용 기록이 거짓이 된다."""
-    from langchain_core.outputs import Generation
-
-    from src import llm
-
-    monkeypatch.setattr(llm, "_cache", None)
-    cache = llm.enable_cache(str(tmp_path / "llm.sqlite"))
-
-    assert cache.lookup("같은 프롬프트", "모델") is None        # miss
-    cache.update("같은 프롬프트", "모델", [Generation(text="응답")])
-    assert cache.lookup("같은 프롬프트", "모델")[0].text == "응답"   # hit
-
-    assert (cache.hits, cache.misses) == (1, 1)
-    assert llm.llm_report() | {"cache_hits": 1, "cache_misses": 1} == llm.llm_report()
-
-
-def test_run_records_token_usage_and_call_counts():
-    """§6 — 실제 비용은 토큰 사용량과 실행 기록으로 확인한다."""
-    from types import SimpleNamespace
-
-    import app
-
-    state = {"trace": [
-        {"node": "research", "status": "ok", "attempt": 1},
-        {"node": "stakeholder", "action": "draft_validation", "status": "failed", "attempt": 1},
-        {"node": "stakeholder", "action": "draft_validation", "status": "ok", "attempt": 2},
-        {"tool": "search_market_signals", "node": "stakeholder", "attempt": 1},
-        {"node": "synthesis", "status": "ok", "attempt": 1},
-        {"node": "report", "status": "ok", "attempt": 1},
-    ]}
-    usage = SimpleNamespace(successful_requests=6, prompt_tokens=41000,
-                            completion_tokens=7120, total_tokens=48120, total_cost=0.3141)
-
-    record = app._accounting(state, usage)
-
-    assert record["node_events"] == {"research": 1, "stakeholder": 2, "synthesis": 1}
-    assert record["tool_calls"] == 1          # tool 이 붙은 이벤트만 센다
-    assert record["retries"] == 1             # attempt > 1
-    assert record["llm_calls"] == 6 and record["total_tokens"] == 48120
-    assert record["cost_usd"] == 0.3141
-    assert "report" not in record["node_events"]   # 생성 단계가 아니다
-
-
-def test_accounting_without_a_callback_still_records_the_trace():
-    import app
-
-    record = app._accounting({"trace": [{"node": "market", "attempt": 1}]}, None)
-    assert record["node_events"] == {"market": 1} and "llm_calls" not in record

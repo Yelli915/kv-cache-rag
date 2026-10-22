@@ -8,12 +8,10 @@ dependencies = [
     "langgraph>=1.0.1",
     "langchain>=1.0.2",
     "langchain-openai>=1.0.1",
-    "langchain-community>=0.3.31",
     "langchain-huggingface>=0.3",   # multilingual-e5-small
     "langchain-tavily>=0.2.12",     # 시장/이해관계자 웹 조사
     "sentence-transformers>=5.1.1",
     "faiss-cpu>=1.12.0",
-    "rank-bm25>=0.2.2",             # EnsembleRetriever(RRF) 의 sparse 축
     "pdfplumber>=0.11.8",           # 페이지 메타데이터 + 표 추출
     "requests>=2.32",               # scripts/prepare_sources.py
     "pypdf>=5.1",                   # 매니페스트 페이지 수
@@ -21,11 +19,13 @@ dependencies = [
     "lxml>=5.2",                    # bs4 파서
     "pyyaml>=6",
     "transformers>=4.57",        # 토큰 기준 청킹용 토크나이저
+    "torch>=2.4",                # sentence-transformers 가 끌고 온다. Linux 는 CPU 휠로 고정(아래)
     "python-dotenv>=1.2.1",
+    "langchain-google-genai>=4.4.2",
+    "langchain-text-splitters>=1.1.2",  # src/rag/chunk.py 토큰 기준 청킹
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8"]
 # PDF 변환은 시스템 라이브러리(pango)가 필요해 기본 설치에서 뺀다.
 # 없어도 파이프라인은 report.md 까지 정상 종료한다.  uv sync --extra pdf
 pdf = ["markdown>=3.6", "weasyprint>=62"]
@@ -33,7 +33,18 @@ pdf = ["markdown>=3.6", "weasyprint>=62"]
 [tool.uv]
 package = false
 
+# Linux 기본 torch 휠은 CUDA 라이브러리 수 GB 를 끌고 온다. e5-small 은 CPU 로 충분하고
+# CI(ubuntu)는 임베딩을 쓰지도 않는다. macOS 는 PyPI 휠이 원래 CPU 라 그대로 둔다.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "rank-bm25>=0.2.2",   # eval/retrieval_metrics.py 의 BM25·RRF 비교 (운영 검색은 dense)
 ]

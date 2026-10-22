@@ -6,9 +6,6 @@
 
 실행 하나가 `runs/<run_id>/` 하나를 소유한다. R3 의 웹 스냅샷도 그 아래에 쌓이므로
 run_id 를 발급하는 것이 이 파일의 첫 번째 책임이다.
-
-**R4·R5 가 새 Assessment 계약으로 이행하기 전에는 끝까지 돌지 않는다.** research 노드에서
-NotImplementedError 로 멈추고 실패를 기록한다. 전 경로 실행은 `scripts/r1_smoke.py` 로 한다.
 """
 
 import argparse
@@ -20,14 +17,10 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-# 설정·매니페스트·출력 경로가 전부 저장소 루트 기준 상대경로라 작업 디렉토리를 옮긴다.
 _ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(_ROOT))
-os.chdir(_ROOT)
-
 
 from dotenv import load_dotenv
-from langchain_community.callbacks import get_openai_callback
+from langchain_core.callbacks import get_usage_metadata_callback
 
 from src.graph import MergeConflict, build_graph, invoke, resume_state, run_dir
 from src.llm import enable_cache, llm_report
@@ -40,12 +33,20 @@ def new_run_id() -> str:
 
 
 def start_run(state) -> Path:
-    """실행 디렉토리를 만들고 running 을 먼저 기록한다. 중간에 죽어도 흔적이 남는다."""
+    """실행 디렉토리를 만들고 running 을 먼저 기록한다. 중간에 죽어도 흔적이 남는다.
+
+    재개면 앞 구간의 기록(토큰·캐시 적중·종료 시각)을 `legs` 로 옮겨 둔다. 덮어쓰면 검토
+    대기 전까지 쓴 비용이 run.json 에서 사라진다(§6).
+    """
     directory = run_dir(state)
     directory.mkdir(parents=True, exist_ok=True)
-    save_json(directory / "run.json", {
+    path = directory / "run.json"
+    previous = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    legs = previous.pop("legs", [])
+    save_json(path, {
         "run_id": state["run_id"], "run_config": state["run_config"],
         "run_status": "running", "started_at": utcnow(),
+        **({"legs": [*legs, previous]} if previous else {}),
     })
     return directory
 
@@ -57,8 +58,8 @@ GENERATION_NODES = ("research", "maturity", "market", "stakeholder",
 def _accounting(state, usage) -> dict:
     """설계서 §6 — 토큰 사용량과 호출 집계. 실제 비용은 이 기록으로 확인한다.
 
-    `llm_calls`·토큰은 콜백이 센 실제 API 호출이라 정확하다. 캐시로 재사용한 응답은
-    호출이 없으므로 0 으로 잡히고, 그게 실제 비용이다.
+    토큰은 콜백이 센 실제 API 응답이라 정확하다(제공자 무관). 캐시로 재사용한 응답은
+    호출이 없으므로 0 으로 잡히고, 그게 실제 비용이다. 실제 호출 수는 `cache_misses`다.
     나머지는 trace 에서 센 값이다 — 콜백은 어느 노드가 불렀는지 모른다.
     """
     events = state.get("trace") or []
@@ -70,13 +71,10 @@ def _accounting(state, usage) -> dict:
         "retries": sum(1 for e in events if (e.get("attempt") or 1) > 1),
     }
     if usage is not None:
-        record |= {
-            "llm_calls": usage.successful_requests,
-            "prompt_tokens": usage.prompt_tokens,
-            "completion_tokens": usage.completion_tokens,
-            "total_tokens": usage.total_tokens,
-            "cost_usd": round(usage.total_cost, 4),
-        }
+        # {model: {input_tokens, output_tokens, total_tokens, ...}} — 모델별로 합산한다
+        per_model = usage.usage_metadata
+        record |= {key: sum(m.get(key, 0) for m in per_model.values())
+                   for key in ("input_tokens", "output_tokens", "total_tokens")}
     return record
 
 
@@ -98,6 +96,9 @@ def finish(state, status, errors=(), usage=None) -> str:
 
 
 def main():
+    # 설정·매니페스트·출력 경로가 전부 저장소 루트 기준 상대경로라 작업 디렉토리를 옮긴다.
+    # import 시점이 아니라 여기서 옮긴다 — app 을 import 하는 스크립트·테스트의 cwd 를 바꾸지 않는다.
+    os.chdir(_ROOT)
     p = argparse.ArgumentParser()
     p.add_argument("--domain", default="데이터센터/클라우드 (대규모 동시성, 비용 민감)")
     p.add_argument("--resume", metavar="RUN_ID", help="검토 대기로 멈춘 실행의 draft.json 을 이어서 돌린다")
@@ -118,17 +119,19 @@ def main():
         state = {"run_id": args.run_id or new_run_id(), "run_status": "running", "trace": [],
                  "run_config": {"domain": args.domain, "model": settings()["llm"],
                                 "limits": settings()["limits"], "started_at": utcnow(),
-                                "no_carry_review": args.no_carry_review, **config}}
+                                "no_carry_review": args.no_carry_review,
+                                # Evidence.quote 가 청크 전문이라 수치 검사를 할 수 있는 실행이다
+                                "numeric_check": True, **config}}
         start = "setup"
 
     directory = start_run(state)
     print(f"[run] {state['run_id']} · {directory}")
 
-    with get_openai_callback() as usage:
+    with get_usage_metadata_callback() as usage:
         try:
             final = invoke(build_graph(start=start), state)
         except MergeConflict as exc:
-            # 근거가 서로 어긋났다. merge-errors.json 은 collect_evidence 가 이미 남겼다.
+            # 근거가 서로 어긋났다. 오류 목록은 run.json 의 errors 에 남는다.
             print(f"실패: 근거 병합 오류 — {exc}")
             return finish(state, "failed", [str(exc)], usage=usage)
         except Exception as exc:
@@ -143,13 +146,13 @@ def main():
         print(f"검토 판정 원장에서 가져온 Claim {len(carried)}건 "
               f"(주장·근거가 완전히 같은 것만)")
 
-    if final.get("review_status") == "pending":
+    if status == "failed":
+        print(f"실패: {directory/'run.json'} 확인")
+    elif final.get("review_status") == "pending":
         # §8 — ID 대조만으로 자동 통과시키지 않는다. 사람이 주장과 근거를 나란히 본다.
         print(f"검토 대기 — Claim {len(pending)}건. {directory/'review.csv'} 의 "
               f"review_result(확인|부결)·reviewer 를 채운 뒤\n"
               f"  uv run python app.py --resume {state['run_id']}")
-    elif status == "failed":
-        print(f"실패: {directory/'run.json'} 확인")
     else:
         # run_status 는 §7 정의를 따라 partial 로 남는다. 사람에게는 "보고서가 나왔고
         # 평가 보류가 몇 건 있다" 가 읽을 값이라 그렇게 적는다.
@@ -160,9 +163,12 @@ def main():
         if gaps:
             print(f"  평가 보류 {len(gaps)}건 — 보고서 §6 한계 참고 (run_status={status})")
         if not any(str(p).endswith(".pdf") for p in final.get("report_paths") or []):
-            print(f"  제출본 PDF 미생성 — 사유는 {directory/'submission.json'}")
+            reason = next((t.get("reason") for t in reversed(final.get("trace") or [])
+                           if t.get("node") == "publish"), "")
+            print(f"  제출본 PDF 미생성 — {reason}")
     return status
 
 
 if __name__ == "__main__":
-    main()
+    # 검토 대기(partial)는 정상 종료다. failed 만 셸·CI 에 실패로 알린다.
+    sys.exit(1 if main() == "failed" else 0)

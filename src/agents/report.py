@@ -12,8 +12,11 @@
 
 import re
 
+from src.agents.common import domain_of
 from src.llm import llm_report, model_name
 from src.output import reference
+from src.output.validate import CITATION_RE
+from src.state import ASSESSMENT_NODES
 
 
 def _bullets(items) -> str:
@@ -21,7 +24,6 @@ def _bullets(items) -> str:
     return "\n".join(f"- {item}" for item in items) if items else "- 해당 없음"
 
 
-PERSPECTIVE_NODES = ["research", "maturity", "market", "stakeholder", "domain_assessment"]
 KIND_LABEL = {"fact": "사실", "inference": "추론", "hypothesis": "가설"}
 TECH_LABEL = {"both": "두 기술"}      # 내부 enum 값을 그대로 지면에 내보내지 않는다
 ROLE_LABEL = {"research": "기술 조사", "maturity": "TRL", "market": "시장성",
@@ -30,7 +32,6 @@ ROLE_LABEL = {"research": "기술 조사", "maturity": "TRL", "market": "시장�
 # "양 기술" · "두 기술" · 기술명 나열 등 표현이 갈린다.
 TECH_ALIAS = {"both": ("두 기술", "양 기술", "TurboQuant", "ITME"),
               "TurboQuant": ("TurboQuant",), "ITME": ("ITME",)}
-CITATION_RE = re.compile(r"\[([0-9a-f]{12})\]")
 
 
 def _number_citations(markdown: str, marks: dict) -> str:
@@ -48,7 +49,7 @@ def _number_citations(markdown: str, marks: dict) -> str:
 
 def _held(state: dict) -> str:
     """평가 보류를 남긴 관점이 있으면 머리말에 경고를 단다(§5 — 자료가 없는 항목은 평가 보류)."""
-    held = [node for node in PERSPECTIVE_NODES
+    held = [node for node in ASSESSMENT_NODES
             if (state.get(node) or {}).get("status") in {"partial", "failed"}]
     if not held:
         return ""
@@ -64,7 +65,7 @@ def _approved(state: dict) -> dict:
     """
     rejected = set((state.get("validation") or {}).get("rejected_claims") or [])
     approved = {}
-    for node in PERSPECTIVE_NODES:
+    for node in ASSESSMENT_NODES:
         assessment = dict(state.get(node) or {})
         if assessment.get("claims"):
             assessment["claims"] = [claim for claim in assessment["claims"]
@@ -191,10 +192,8 @@ def _summary(synthesis: dict) -> str:
                      + _top(agreements, "§5.1"))
 
     if conflicts:
-        conflict_lines = [f"**{conflict['perspective']}** — {conflict['why']}"
-                          for conflict in conflicts]
         parts.append("관점별 평가가 실제로 달라진 지점은 다음과 같다.\n"
-                     + _top(conflict_lines, "§5.2"))
+                     + _top(_conflict_lines(conflicts), "§5.2"))
 
     if gaps:
         parts.append("평가 과정에서 확인된 주요 근거 공백은 다음과 같다.\n"
@@ -206,22 +205,20 @@ def _summary(synthesis: dict) -> str:
     return "\n\n".join(parts)
 
 
+def _conflict_lines(conflicts: list[dict]) -> list[str]:
+    return [f"**{conflict['perspective']}** — {conflict['why']}" for conflict in conflicts]
+
+
 def _conflicts(conflicts: list[dict]) -> str:
     """관점별 차이를 Markdown으로 변환한다."""
-    if not conflicts:
-        return "- 확인된 관점 간 상충 없음"
-
-    return "\n".join(
-        f"- **{conflict['perspective']}** — {conflict['why']}"
-        for conflict in conflicts
-    )
+    return _bullets(_conflict_lines(conflicts)) if conflicts else "- 확인된 관점 간 상충 없음"
 
 
 def report(state) -> dict:
     """검증된 State 를 §9 목차에 맞춰 Markdown 으로 조립한다. 판단 LLM 을 부르지 않는다(§6)."""
     synthesis = state["synthesis"]
     config = state.get("run_config") or {}
-    domain = config.get("domain", "데이터센터/클라우드")
+    domain = domain_of(state)
     approved = _approved(state)
 
     summary = _summary(synthesis)

@@ -8,8 +8,12 @@ mock 노드는 tests/mock_nodes.py 와 같은 것을 쓴다 — 테스트와 증
 """
 
 import argparse
-import json
+import sys
 from pathlib import Path
+
+# 'python scripts/r1_smoke.py' 로 직접 실행해도 src·app·tests 를 찾게 한다.
+# app 을 import 하면 작업 디렉토리가 저장소 루트로 옮겨지므로 --root 상대경로는 루트 기준이다.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import finish, start_run
 from src.graph import MergeConflict, build_graph, invoke, resume_state
@@ -63,9 +67,8 @@ def run(root):
         cases.append({"case": "merge_conflict", "passed": False, "run_status": "?"})
     except MergeConflict as exc:
         status = finish(state, "failed", [str(exc)])
-        errors = json.loads((root / "r1-merge-conflict" / "merge-errors.json").read_text())
         cases.append({"case": "merge_conflict", "passed": status == "failed",
-                      "run_status": status, "errors": errors["errors"]})
+                      "run_status": status, "errors": str(exc).split("; ")})
 
     save_json(root / "checks.json", {"synthetic_only": True, "cases": cases})
     for case in cases:

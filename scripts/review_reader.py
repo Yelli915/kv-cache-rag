@@ -49,7 +49,10 @@ def _claims(rows):
 def show(run_id, *, runs_dir=None, only_pending=False, claim=None, width=None):
     runs_dir = Path(runs_dir or settings()["run"]["runs_dir"])
     path = runs_dir / run_id / "review.csv"
-    rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))
+    if not path.exists():
+        raise SystemExit(f"{path} 없음 — run_id 또는 --runs-dir 를 확인할 것")
+    with path.open(encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
     verdicts = read_verdicts(path)
     width = width or min(shutil.get_terminal_size((100, 24)).columns, 100)
 
@@ -72,7 +75,7 @@ def show(run_id, *, runs_dir=None, only_pending=False, claim=None, width=None):
         print(_wrap(head["claim_text"], width))
         for index, row in enumerate(claim_rows, 1):
             if not row["evidence_id"]:
-                print(f"\n  근거 없음 — §6 에 따라 Gap 이어야 한다")
+                print("\n  근거 없음 — §6 에 따라 Gap 이어야 한다")
                 continue
             print(f"\n  근거 {index}/{len(claim_rows)} · {row['source_id']} "
                   f"· {row['location'] or '위치 미상'} · {row['evidence_id']}")

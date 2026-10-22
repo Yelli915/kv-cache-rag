@@ -27,9 +27,3 @@ def to_keywords(query: str) -> str:
     for ko, en in sorted(GLOSSARY.items(), key=lambda x: -len(x[0])):
         out = out.replace(ko, en)
     return out
-
-
-def translated(query: str) -> tuple[str, bool]:
-    """(변환 질의, 변환 발생 여부). 변환 여부는 trace 에 남긴다."""
-    kw = to_keywords(query)
-    return kw, kw != query

@@ -1,7 +1,7 @@
 """인덱스 점검 — 담당: R2
 
 LLM 을 호출하지 않으므로 API 키 없이 돌아간다.
-수집·200쪽 가드·청킹·컬렉션 분리·키워드 변환을 한 번에 검증한다.
+수집·200쪽 가드·청킹·컬렉션 분리를 한 번에 검증한다.
 
     uv run python -m scripts.ingest
 
@@ -21,7 +21,6 @@ os.chdir(_ROOT)
 
 
 from src.rag.index import build
-from src.rag.query_kw import translated
 from src.tools.docs import search_source_documents
 
 
@@ -37,18 +36,13 @@ def main():
     print(f"  합계 {b['total_pages']}쪽 / 한도 {b['page_budget']}쪽 "
           f"({'OK' if b['within_budget'] else '초과'}) · 청크 {len(idx['chunks'])}개")
 
-    print("\n=== 키워드 변환 (BM25 축 전용) ===")
-    kw, changed = translated("KV 캐시 양자화 처리량 지연")
-    assert changed, "용어사전이 적용되지 않았다 — src/rag/query_kw.py 확인"
-    print(f"  ko: KV 캐시 양자화 처리량 지연\n  en: {kw}")
-
     print("\n=== 컬렉션별 검색 ===")
     for col, q in [("papers_core", "KV 캐시 메모리 병목"),
                    ("ecosystem", "시장 규모 채택 현황"),
                    ("context", "데이터센터 추론 비용")]:
         hits = search_source_documents.invoke({"query": q, "collection": col, "top_k": 3})
         if not hits:
-            print(f"  {col:12s} ⚠ 근거 0건 — sources.yaml 미확정")
+            print(f"  {col:12s} ⚠ 근거 0건 — sources.json 미확정")
             continue
         assert all(h["collection"] == col for h in hits), f"{col} 컬렉션 누수"
         print(f"  {col:12s} {len(hits)}건  예: {hits[0]['source']} p{hits[0]['page']} "

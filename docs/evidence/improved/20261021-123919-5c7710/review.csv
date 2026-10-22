@@ -1,0 +1,1412 @@
+﻿claim_id,node,technology,claim_kind,claim_text,evidence_id,source_id,source_type,location,evidence_quote,review_result,reviewer,review_comment,carried_from
+claim_research_tq_20261021,research,TurboQuant,fact,"TurboQuant는 소프트웨어 알고리즘 계층에서 KV 캐시 메모리 병목을 해결하는 압축 기법이다 [cefcd0973374]. 내적 추정에 비편향적인 TurboQuant_prod와 평균 제곱 오차(MSE)를 최소화하도록 설계된 TurboQuant_mse의 두 가지 양자화 방식을 제안하여 데이터 압축 및 오차율을 최적화한다 [273c9c2b90f2], [3bd15f0aae5b]. 하드웨어는 단일 NVIDIA A100 GPU 환경에서 검증되었으며 [273c9c2b90f2], 모델 아키텍처로는 Llama-3.1-8B-Instruct 및 Ministral-7B-Instruct에 적용되어 LongBench-V1 벤치마크와 Needle in a haystack 과제에서 평가되었다 [cefcd0973374], [8356d73117ad]. LongBench-V1 벤치마크 평가에서 Llama-3.1-8B-Instruct 기준 TurboQuant 3.5비트 설정 시 평균 50.06점을 기록하였으며(특정 모델·과제의 벤치마크 결과) [cefcd0973374], 2.5비트 설정에서는 평균 49.44점을 보였다 [cefcd0973374]. 기술적 한계로는 양자화 비트 할당을 타 기법과 맞추는 과정에서 추가적인 스토리지 오버헤드가 발생할 수 있다는 점이 지적되었으며 [cefcd0973374], TurboQuant_mse 방식의 경우 평균 내적 크기가 커질수록 오차의 분산이 증가하는 제약이 존재한다 [8356d73117ad]. 또한 제공된 실험 환경은 단일 GPU 상의 벡터 양자화 및 정확도 검증에 집중되어 대규모 클라우드 동시성 서비스 부하 조건에서의 시스템 지연 특성은 본 근거에서 구체화되지 않았다 [273c9c2b90f2].",cefcd0973374,turboquant-paper,papers_core,p.20,"Method KV Size SingleQA MultiQA Summarization Few shot Synthetic Code Average
+Llama-3.1-8B-Instruct
+FullCache 16 45.29 45.16 26.55 68.38 59.54 46.28 50.06
+KIVI 3 43.38 37.99 27.16 68.38 59.50 44.68 48.50
+KIVI 5 45.04 45.70 26.47 68.57 59.55 46.41 50.16
+PolarQuant 3.9 45.18 44.48 26.23 68.25 60.07 45.24 49.78
+TurboQuant(ours) 2.5 44.16 44.96 24.80 68.01 59.65 45.76 49.44
+TurboQuant(ours) 3.5 45.01 45.31 26.00 68.63 59.95 46.17 50.06
+Ministral-7B-Instruct
+FullCache 16 47.53 49.06 26.09 66.83 53.50 47.90 49.89
+TurboQuant(ours) 2.5 48.38 49.22 24.91 66.69 53.17 46.83 49.62
+Table 1: LongBench-V1 [10] results of various KV cache compression methods on Llama-3.1-8B-
+Instruct.
+Approach d=200 d=1536 d=3072
+Product Quantization 37.04 239.75 494.42
+RabitQ 597.25 2267.59 3957.19
+TurboQuant 0.0007 0.0013 0.0021
+Table 2: Quantization time (in seconds) for different approaches across various dimensions using
+4-bit quantization.
+tially,leadingtoadditionalstorageoverhead. Inourexperiments,wecarefullytunedtheparameters
+to match the bit allocation of other methods. The most efficient implementation, designed for rapid",,,,
+claim_research_tq_20261021,research,TurboQuant,fact,"TurboQuant는 소프트웨어 알고리즘 계층에서 KV 캐시 메모리 병목을 해결하는 압축 기법이다 [cefcd0973374]. 내적 추정에 비편향적인 TurboQuant_prod와 평균 제곱 오차(MSE)를 최소화하도록 설계된 TurboQuant_mse의 두 가지 양자화 방식을 제안하여 데이터 압축 및 오차율을 최적화한다 [273c9c2b90f2], [3bd15f0aae5b]. 하드웨어는 단일 NVIDIA A100 GPU 환경에서 검증되었으며 [273c9c2b90f2], 모델 아키텍처로는 Llama-3.1-8B-Instruct 및 Ministral-7B-Instruct에 적용되어 LongBench-V1 벤치마크와 Needle in a haystack 과제에서 평가되었다 [cefcd0973374], [8356d73117ad]. LongBench-V1 벤치마크 평가에서 Llama-3.1-8B-Instruct 기준 TurboQuant 3.5비트 설정 시 평균 50.06점을 기록하였으며(특정 모델·과제의 벤치마크 결과) [cefcd0973374], 2.5비트 설정에서는 평균 49.44점을 보였다 [cefcd0973374]. 기술적 한계로는 양자화 비트 할당을 타 기법과 맞추는 과정에서 추가적인 스토리지 오버헤드가 발생할 수 있다는 점이 지적되었으며 [cefcd0973374], TurboQuant_mse 방식의 경우 평균 내적 크기가 커질수록 오차의 분산이 증가하는 제약이 존재한다 [8356d73117ad]. 또한 제공된 실험 환경은 단일 GPU 상의 벡터 양자화 및 정확도 검증에 집중되어 대규모 클라우드 동시성 서비스 부하 조건에서의 시스템 지연 특성은 본 근거에서 구체화되지 않았다 [273c9c2b90f2].",273c9c2b90f2,turboquant-paper,papers_core,p.15,"This is because it establishes a lower bound on the expected distortion, rather than the worst-case
+error, and aligns seamlessly with our upper bounds presented in Theorem 1 and Theorem 2.
+4 Experiments
+All experiments are performed using a single NVIDIA A100 GPU. The experimental section is
+divided into two parts: one to empirically validate the theoretical results, and another to evaluate
+the performance of our methods on downstream tasks, specifically KV cache quantization and
+nearest neighbor vector search.
+4.1 Empirical Validation
+In this section, we verify the theoretical results established in previous sections. We conduct our
+experiments using the DBpedia Entities dataset, which has been encoded into a 1536-dimensional
+space using OpenAI3 embeddings. To perform our experiments, we randomly sample 100,000 data
+points from the dataset, denoted as training set, which serves as our primary dataset. Additionally,
+we extract 1,000 distinct entries, denoted as query set, to be used as query points.
+We evaluate two quantization methods: TurboQuant and TurboQuant . The method
+prod mse
+TurboQuant is designed to be optimzed for estimating the mean squared error (MSE) between
+mse
+the quantized and original vectors. In contrast, TurboQuant is unbiased for estimating the
+prod
+inner product between the quantized and original vectors.
+Both methods are applied to the task of inner product estimation by quantizing training set and
+analyzingthedistortionininnerproductcalculationsacrossdifferentbitwidths. AsshowninFig.1,
+increasing the bit width reduces variance in both methods. However, when used for inner product",,,,
+claim_research_tq_20261021,research,TurboQuant,fact,"TurboQuant는 소프트웨어 알고리즘 계층에서 KV 캐시 메모리 병목을 해결하는 압축 기법이다 [cefcd0973374]. 내적 추정에 비편향적인 TurboQuant_prod와 평균 제곱 오차(MSE)를 최소화하도록 설계된 TurboQuant_mse의 두 가지 양자화 방식을 제안하여 데이터 압축 및 오차율을 최적화한다 [273c9c2b90f2], [3bd15f0aae5b]. 하드웨어는 단일 NVIDIA A100 GPU 환경에서 검증되었으며 [273c9c2b90f2], 모델 아키텍처로는 Llama-3.1-8B-Instruct 및 Ministral-7B-Instruct에 적용되어 LongBench-V1 벤치마크와 Needle in a haystack 과제에서 평가되었다 [cefcd0973374], [8356d73117ad]. LongBench-V1 벤치마크 평가에서 Llama-3.1-8B-Instruct 기준 TurboQuant 3.5비트 설정 시 평균 50.06점을 기록하였으며(특정 모델·과제의 벤치마크 결과) [cefcd0973374], 2.5비트 설정에서는 평균 49.44점을 보였다 [cefcd0973374]. 기술적 한계로는 양자화 비트 할당을 타 기법과 맞추는 과정에서 추가적인 스토리지 오버헤드가 발생할 수 있다는 점이 지적되었으며 [cefcd0973374], TurboQuant_mse 방식의 경우 평균 내적 크기가 커질수록 오차의 분산이 증가하는 제약이 존재한다 [8356d73117ad]. 또한 제공된 실험 환경은 단일 GPU 상의 벡터 양자화 및 정확도 검증에 집중되어 대규모 클라우드 동시성 서비스 부하 조건에서의 시스템 지연 특성은 본 근거에서 구체화되지 않았다 [273c9c2b90f2].",3bd15f0aae5b,turboquant-paper,papers_core,p.5,"mse
+bit-width one less than our target budget and then apply a QJL [62] on the residual error. This is
+proved to be unbiased and also has nearly optimal inner product error rate.
+InTheorem 2we prove thattheb-bitinner product optimizedTurboQuantQ : Rd 0,1 b·d
+prod
+→ { }
+achieves the following distortion for any worst-case vectors x,y Rd with x = 1:
+∈ ∥ ∥
+(cid:104)(cid:68) (cid:69)(cid:105)
+• E y,Q−1 (cid:0) Q (x) (cid:1) = y,x
+prod prod ⟨ ⟩
+• D (Q ) := E (cid:20)(cid:12) (cid:12) y,x y,Q−1 (cid:0) Q (x) (cid:1) (cid:12) (cid:12) 2 (cid:21) √ 3π2·∥y∥2 2 1 for any b 0.
+prod prod (cid:12) ⟨ ⟩−⟨ prod prod ⟩ (cid:12) ≤ d · 4b ≥
+5",,,,
+claim_research_tq_20261021,research,TurboQuant,fact,"TurboQuant는 소프트웨어 알고리즘 계층에서 KV 캐시 메모리 병목을 해결하는 압축 기법이다 [cefcd0973374]. 내적 추정에 비편향적인 TurboQuant_prod와 평균 제곱 오차(MSE)를 최소화하도록 설계된 TurboQuant_mse의 두 가지 양자화 방식을 제안하여 데이터 압축 및 오차율을 최적화한다 [273c9c2b90f2], [3bd15f0aae5b]. 하드웨어는 단일 NVIDIA A100 GPU 환경에서 검증되었으며 [273c9c2b90f2], 모델 아키텍처로는 Llama-3.1-8B-Instruct 및 Ministral-7B-Instruct에 적용되어 LongBench-V1 벤치마크와 Needle in a haystack 과제에서 평가되었다 [cefcd0973374], [8356d73117ad]. LongBench-V1 벤치마크 평가에서 Llama-3.1-8B-Instruct 기준 TurboQuant 3.5비트 설정 시 평균 50.06점을 기록하였으며(특정 모델·과제의 벤치마크 결과) [cefcd0973374], 2.5비트 설정에서는 평균 49.44점을 보였다 [cefcd0973374]. 기술적 한계로는 양자화 비트 할당을 타 기법과 맞추는 과정에서 추가적인 스토리지 오버헤드가 발생할 수 있다는 점이 지적되었으며 [cefcd0973374], TurboQuant_mse 방식의 경우 평균 내적 크기가 커질수록 오차의 분산이 증가하는 제약이 존재한다 [8356d73117ad]. 또한 제공된 실험 환경은 단일 GPU 상의 벡터 양자화 및 정확도 검증에 집중되어 대규모 클라우드 동시성 서비스 부하 조건에서의 시스템 지연 특성은 본 근거에서 구체화되지 않았다 [273c9c2b90f2].",8356d73117ad,turboquant-paper,papers_core,p.17,"(a) TurboQuant
+prod
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.01
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.06
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.10
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.17
+×
+(b) TurboQuant
+mse
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.01
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.06
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.10
+×
+4
+2
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.17
+×
+Figure 2: The variance of Inner-product error remains constant for TurboQuant , while in
+prod
+TurboQuant increases with the average inner product. Bit-width is b = 2.
+mse
+sentence (the ”needle”) at an arbitrary location within a much larger text (the ”haystack”) and
+assessing whether the model can successfully extract it.
+Following the experimental setup of Fu et al. [21], we conduct evaluations using the Llama-3.1-
+8B-Instruct model. To analyze performance across different input sequence lengths, we vary the",,,,
+claim_research_itme_20261021,research,ITME,fact,"ITME는 하드웨어 CXL 및 메모리 컨트롤러 계층에서 KV 캐시 병목을 해결하는 다계층 메모리 확장 아키텍처이다 [d2f19a627f9b], [53fe02f0d39d]. CXL-하이브리드 메모리와 NVMe SSD를 결합하여 공유 컨텍스트 계층(T3.5)을 구성하고, 내부 하드웨어 컨트롤러가 NVMe 요청을 직접 발행하여 기존 소프트웨어 스토리지 스택을 우회한다 [53fe02f0d39d]. 이를 통해 호스트 CPU 개입 없이 고가 DPU 대신 상용 저비용 RNIC와 다계층 DMA 프리페칭 파이프라인을 활용해 GPU 연산과 데이터 전송을 중첩한다 [53fe02f0d39d], [d919cc1a9bcf]. 적용 범위 측면에서는 정적 가중치와 예측 가능성이 중간 수준인 긴 문맥 프리픽스(Long-context prefix) KV 캐시를 원격 확장 계층으로 오프로드하며 [d2f19a627f9b], 하드웨어 스펙으로는 양산형 SK Hynix CMM, PCIe Gen5 NVMe SSD 및 FPGA 기반 하드웨어 프로토타입을 통해 실증되었다 [479f00cad7ea]. ITME는 호스트 메모리 한계를 초과하는 대규모 KV 캐시를 수용하여 최대 35.7%의 처리량 향상을 달성하였다(CPU 오프로드 대비, 256개 동시 대화, 호스트 메모리 128GB 소진 후 구간) [479f00cad7ea]. 반면 기술적 한계로는 디코딩 단계에서 지연시간에 극도로 민감하고 접근 예측성이 낮은 워킹(Working) KV 캐시의 경우 파이프라인 정체를 방지하기 위해 반드시 GPU 메모리나 호스트 메모리에 유지해야 하므로 오프로드 대상에서 제외된다는 점이 명시되어 있다 [d2f19a627f9b], [d919cc1a9bcf]. 아울러 CXL 하이브리드 메모리 컨트롤러, 프리페치 버퍼 관리 및 우선순위 스케줄러 등 전용 하드웨어 및 시스템 소프트웨어 복잡도가 수반된다 [e24e4f13d6dc], [479f00cad7ea].",d2f19a627f9b,itme-paper,papers_core,p.2,"Table1:LLMDataCharacteristicsandTargetTiering
+GPU Memory (T1) GPU Memory (T1)
+DataType Predict. Perf. TargetTier Capacity Act. Weights Working KV Cache Act. Working KV Caches
+Weights Deterministic Critical Our(ITME) Static(Large) Direct Memory Access Direct Memory Access
+Activations High Critical GPUMem./HostMem. Transient(Small)
+Host Memory (T2) System Memory (T2)
+WorkingKV Low Critical GPUMem./HostMem. Incremental(Moderate)
+Long-contextKV Moderate Moderate Our(ITME) Cumulative(Large) Staging SpilloverKV Cache Staging Spillover KV Caches
+File system
+Network (e.g., RDMA)
+Local Storage (T3)
+Warm KV Cache CXL-Hybrid Memory (T3.5)
+theoverallmemoryfootprint.Table1summarizesthecharacter-
+DRAM Cache
+isticsandtargettieringforLLMdatatypes.Activationstransient T3.5 (i.e., ICMS) Network (e.g., RDMA) Staging buffer
+andsmallwithhighperformancecriticality.WorkingKVcaches,
+HW-managed
+althoughlargerthanactivations,arealsolatencycritical,while Remote Storage (T3.5 / T4) NVMe SSDs
+havinglowerpredictability.Consequently,activationsandworking Cold or Shared KV context Wegihts Shared KV context
+KVcachearebetterplacedinhigh-speedGPUorhostmemory
+(a) Baseline: 4-Tier Structure (b) ITME structure",,,,
+claim_research_itme_20261021,research,ITME,fact,"ITME는 하드웨어 CXL 및 메모리 컨트롤러 계층에서 KV 캐시 병목을 해결하는 다계층 메모리 확장 아키텍처이다 [d2f19a627f9b], [53fe02f0d39d]. CXL-하이브리드 메모리와 NVMe SSD를 결합하여 공유 컨텍스트 계층(T3.5)을 구성하고, 내부 하드웨어 컨트롤러가 NVMe 요청을 직접 발행하여 기존 소프트웨어 스토리지 스택을 우회한다 [53fe02f0d39d]. 이를 통해 호스트 CPU 개입 없이 고가 DPU 대신 상용 저비용 RNIC와 다계층 DMA 프리페칭 파이프라인을 활용해 GPU 연산과 데이터 전송을 중첩한다 [53fe02f0d39d], [d919cc1a9bcf]. 적용 범위 측면에서는 정적 가중치와 예측 가능성이 중간 수준인 긴 문맥 프리픽스(Long-context prefix) KV 캐시를 원격 확장 계층으로 오프로드하며 [d2f19a627f9b], 하드웨어 스펙으로는 양산형 SK Hynix CMM, PCIe Gen5 NVMe SSD 및 FPGA 기반 하드웨어 프로토타입을 통해 실증되었다 [479f00cad7ea]. ITME는 호스트 메모리 한계를 초과하는 대규모 KV 캐시를 수용하여 최대 35.7%의 처리량 향상을 달성하였다(CPU 오프로드 대비, 256개 동시 대화, 호스트 메모리 128GB 소진 후 구간) [479f00cad7ea]. 반면 기술적 한계로는 디코딩 단계에서 지연시간에 극도로 민감하고 접근 예측성이 낮은 워킹(Working) KV 캐시의 경우 파이프라인 정체를 방지하기 위해 반드시 GPU 메모리나 호스트 메모리에 유지해야 하므로 오프로드 대상에서 제외된다는 점이 명시되어 있다 [d2f19a627f9b], [d919cc1a9bcf]. 아울러 CXL 하이브리드 메모리 컨트롤러, 프리페치 버퍼 관리 및 우선순위 스케줄러 등 전용 하드웨어 및 시스템 소프트웨어 복잡도가 수반된다 [e24e4f13d6dc], [479f00cad7ea].",53fe02f0d39d,itme-paper,papers_core,p.3,"30
+CXL-Hybrid Memory Weights Long-Context Prefix KV Cache
+25
+Network (i.e., RDMA)
+20
+RDMA read / write RDMA read KV Cache Weights
+Turn 0 Q0 A0 Layer 0 Attention (L0) FFN (L0) 15
+em
+iT Turn 1 Q0 A0 Q1 A1 Layer 1 Attention (L1) FFN (L1)
+10
+5
+Turn 2 Q0 A0 Q1 A1 Q2 A2 Layer 2 Attention (L2) FFN (L2)
+0
+(a) Long-context prefix KV cache (b) Layer-wise prefetching 2
+MB
+4
+MB
+8
+MB
+16
+MB
+32
+MB
+64
+MB
+128
+MB
+256
+MB
+512
+MB
+1
+GB
+2
+GB
+Transfer Size
+Figure2:Accessbehaviorandprefetchingopportunitiesfor
+modelweightsandlong-contextprefixKVcache
+storagelayers.Insteadofprovidingdirect,low-overheadhardware
+access,thesesolutionsimposeaheavymanagementburden,de-
+mandingsignificantengineeringefforttooptimizetheunderlying
+remotestoragetiers.
+OurproposedITMErealizesthissharedcontexttier(T3.5)by
+transformingSSD-backedcapacityintoadirect-accessmemory
+expansion.AsillustratedinFigure1(b),ITMEadoptsamoreeffi-
+cientapproachbypresentingitselfasaremotememoryserverviaa
+CXL-hybrid-memory,breakingthedependencyonexpensiveDPUs
+andutilizingcommodity,low-costRNICs.Theinternalhardware
+controllerdirectlyissuesNVMerequests,bypassingthetraditional",,,,
+claim_research_itme_20261021,research,ITME,fact,"ITME는 하드웨어 CXL 및 메모리 컨트롤러 계층에서 KV 캐시 병목을 해결하는 다계층 메모리 확장 아키텍처이다 [d2f19a627f9b], [53fe02f0d39d]. CXL-하이브리드 메모리와 NVMe SSD를 결합하여 공유 컨텍스트 계층(T3.5)을 구성하고, 내부 하드웨어 컨트롤러가 NVMe 요청을 직접 발행하여 기존 소프트웨어 스토리지 스택을 우회한다 [53fe02f0d39d]. 이를 통해 호스트 CPU 개입 없이 고가 DPU 대신 상용 저비용 RNIC와 다계층 DMA 프리페칭 파이프라인을 활용해 GPU 연산과 데이터 전송을 중첩한다 [53fe02f0d39d], [d919cc1a9bcf]. 적용 범위 측면에서는 정적 가중치와 예측 가능성이 중간 수준인 긴 문맥 프리픽스(Long-context prefix) KV 캐시를 원격 확장 계층으로 오프로드하며 [d2f19a627f9b], 하드웨어 스펙으로는 양산형 SK Hynix CMM, PCIe Gen5 NVMe SSD 및 FPGA 기반 하드웨어 프로토타입을 통해 실증되었다 [479f00cad7ea]. ITME는 호스트 메모리 한계를 초과하는 대규모 KV 캐시를 수용하여 최대 35.7%의 처리량 향상을 달성하였다(CPU 오프로드 대비, 256개 동시 대화, 호스트 메모리 128GB 소진 후 구간) [479f00cad7ea]. 반면 기술적 한계로는 디코딩 단계에서 지연시간에 극도로 민감하고 접근 예측성이 낮은 워킹(Working) KV 캐시의 경우 파이프라인 정체를 방지하기 위해 반드시 GPU 메모리나 호스트 메모리에 유지해야 하므로 오프로드 대상에서 제외된다는 점이 명시되어 있다 [d2f19a627f9b], [d919cc1a9bcf]. 아울러 CXL 하이브리드 메모리 컨트롤러, 프리페치 버퍼 관리 및 우선순위 스케줄러 등 전용 하드웨어 및 시스템 소프트웨어 복잡도가 수반된다 [e24e4f13d6dc], [479f00cad7ea].",d919cc1a9bcf,itme-paper,papers_core,p.3,"CXL-Hybrid Memory (T3.5) -> RDMA (100Gbps x 2) -> Host Memory (T2)
+Figure3:Bandwidth(GB/s)acrossdifferentDMApathsfor
+datasizesrangingfrom2MBto2GB.
+workingKVcachearestrictlyprioritizedforGPUmem-
+oryorhostmemory.Anyaccessdelayduringthedecod-
+ingphasecausesseverepipelinestalls.Becausetheirtotal
+memoryfootprintremainsrelativelysmall,GPUandhost
+memorycancomfortablysatisfytheircapacitydemands
+withoutrequiringoffloadingtoITME.
+Bytargetingthedeterministicaccesspatternsofweightsand
+long-contextKVcaches,ITMEestablishesanefficientprefetching
+pipelinefromtheCXL-hybridmemorytoGPUmemory,usinghost
+memoryasanintermediatestaginglayer(Figure2(b)).
+2.3 PipelinedMulti-tierDMA-basedPrefetching
+The keyinsight isthat layerexecution exposesprefetch oppor-
+tunitiesthatcanoverlapdatamovementwithGPUcomputation.
+Ratherthanwaitinguntildataisdemanded,ITMEissuesprefetches
+forupcomingblocksduringtheexecutionofearlierlayers,allow-
+ingCXL-hybridmemory(T3.5)-to-GPUmemory(T1)transfersto
+progressaheadofuse.Thispipelinedexecutionmodelhelpshide
+asignificantfractionoftransferlatencybehindusefulcomputa-
+tion.Furthermore,DMA-basedhardwareprefetchingremovesthe
+hostCPUfromthecriticalpath,reducingsoftwareoverheadand",,,,
+claim_research_itme_20261021,research,ITME,fact,"ITME는 하드웨어 CXL 및 메모리 컨트롤러 계층에서 KV 캐시 병목을 해결하는 다계층 메모리 확장 아키텍처이다 [d2f19a627f9b], [53fe02f0d39d]. CXL-하이브리드 메모리와 NVMe SSD를 결합하여 공유 컨텍스트 계층(T3.5)을 구성하고, 내부 하드웨어 컨트롤러가 NVMe 요청을 직접 발행하여 기존 소프트웨어 스토리지 스택을 우회한다 [53fe02f0d39d]. 이를 통해 호스트 CPU 개입 없이 고가 DPU 대신 상용 저비용 RNIC와 다계층 DMA 프리페칭 파이프라인을 활용해 GPU 연산과 데이터 전송을 중첩한다 [53fe02f0d39d], [d919cc1a9bcf]. 적용 범위 측면에서는 정적 가중치와 예측 가능성이 중간 수준인 긴 문맥 프리픽스(Long-context prefix) KV 캐시를 원격 확장 계층으로 오프로드하며 [d2f19a627f9b], 하드웨어 스펙으로는 양산형 SK Hynix CMM, PCIe Gen5 NVMe SSD 및 FPGA 기반 하드웨어 프로토타입을 통해 실증되었다 [479f00cad7ea]. ITME는 호스트 메모리 한계를 초과하는 대규모 KV 캐시를 수용하여 최대 35.7%의 처리량 향상을 달성하였다(CPU 오프로드 대비, 256개 동시 대화, 호스트 메모리 128GB 소진 후 구간) [479f00cad7ea]. 반면 기술적 한계로는 디코딩 단계에서 지연시간에 극도로 민감하고 접근 예측성이 낮은 워킹(Working) KV 캐시의 경우 파이프라인 정체를 방지하기 위해 반드시 GPU 메모리나 호스트 메모리에 유지해야 하므로 오프로드 대상에서 제외된다는 점이 명시되어 있다 [d2f19a627f9b], [d919cc1a9bcf]. 아울러 CXL 하이브리드 메모리 컨트롤러, 프리페치 버퍼 관리 및 우선순위 스케줄러 등 전용 하드웨어 및 시스템 소프트웨어 복잡도가 수반된다 [e24e4f13d6dc], [479f00cad7ea].",479f00cad7ea,itme-paper,papers_core,p.1,"byevaluatingitsperformancepotentialwithproduction-gradeSK effectivenessbystrictlylimitinglocalCPUandmemoryresources.
+HynixCMMandPCIeGen5NVMeSSDs,whilefurtherdemon- ModernDPUsleverageaspecializedhardwareoptimizationknown
+stratingitsfunctionalfeasibilitythroughanFPGA-basedhardware asNVMe-over-fabrics(NVMe-oF)targetoffload[34].Thisarchi-
+prototype.Overall,ITMEenhancesconventionalCPU-offloading tecturedelegatesthehandlingofSSDoperationsentirelytothe
+byprovidingadditionalremotememoryexpansiontoaccommodate hostchanneladapter(HCA)hardwareviaPCIepeer-to-peer(P2P)
+largeKVcachefootprintsbeyondhostmemorylimits,achieving communication.BybypassingthehostCPU,thisoffloadingtech-
+uptoa35.7%throughputimprovement. niquedrasticallyminimizescomputationaloverhead,allowingthe
+JBOFsystemtoscaleeffectivelyandhandlehigherIOPSwithlower
+latency.WhileDPU-basedoffloadingresolvesthelocalCPUbot-
+1 Introduction
+tleneck, simply scaling out these expensive devices is not cost-
+AsLargeLanguageModels(LLMs)continuetogrowinscale,the
+effective[38];thus,varioussoftwaretechniqueshavebeenpro-
+primarybottleneckininferencesystemshasshiftedfromrawcom-
+posedtomaximizetheirefficiency[13,22,34,43].Despitethese",,,,
+claim_research_itme_20261021,research,ITME,fact,"ITME는 하드웨어 CXL 및 메모리 컨트롤러 계층에서 KV 캐시 병목을 해결하는 다계층 메모리 확장 아키텍처이다 [d2f19a627f9b], [53fe02f0d39d]. CXL-하이브리드 메모리와 NVMe SSD를 결합하여 공유 컨텍스트 계층(T3.5)을 구성하고, 내부 하드웨어 컨트롤러가 NVMe 요청을 직접 발행하여 기존 소프트웨어 스토리지 스택을 우회한다 [53fe02f0d39d]. 이를 통해 호스트 CPU 개입 없이 고가 DPU 대신 상용 저비용 RNIC와 다계층 DMA 프리페칭 파이프라인을 활용해 GPU 연산과 데이터 전송을 중첩한다 [53fe02f0d39d], [d919cc1a9bcf]. 적용 범위 측면에서는 정적 가중치와 예측 가능성이 중간 수준인 긴 문맥 프리픽스(Long-context prefix) KV 캐시를 원격 확장 계층으로 오프로드하며 [d2f19a627f9b], 하드웨어 스펙으로는 양산형 SK Hynix CMM, PCIe Gen5 NVMe SSD 및 FPGA 기반 하드웨어 프로토타입을 통해 실증되었다 [479f00cad7ea]. ITME는 호스트 메모리 한계를 초과하는 대규모 KV 캐시를 수용하여 최대 35.7%의 처리량 향상을 달성하였다(CPU 오프로드 대비, 256개 동시 대화, 호스트 메모리 128GB 소진 후 구간) [479f00cad7ea]. 반면 기술적 한계로는 디코딩 단계에서 지연시간에 극도로 민감하고 접근 예측성이 낮은 워킹(Working) KV 캐시의 경우 파이프라인 정체를 방지하기 위해 반드시 GPU 메모리나 호스트 메모리에 유지해야 하므로 오프로드 대상에서 제외된다는 점이 명시되어 있다 [d2f19a627f9b], [d919cc1a9bcf]. 아울러 CXL 하이브리드 메모리 컨트롤러, 프리페치 버퍼 관리 및 우선순위 스케줄러 등 전용 하드웨어 및 시스템 소프트웨어 복잡도가 수반된다 [e24e4f13d6dc], [479f00cad7ea].",e24e4f13d6dc,itme-paper,papers_core,p.6,"(p6 표)
+| KV Block Mangement
+($ 4.1) |
+|---|
+| Multi-tier DMAPrefetching
+($ 4.2) |
+| Read Priority Scheduling |
+| ($ 4.2) |
+| Remote Manager
+($ 4.3) |
+| User Prefetch Lib.
+($ 3.2) |",,,,
+claim_maturity_tq_20261021,maturity,TurboQuant,fact,"양자화 이론 측면에서 극좌표 양자화 관련 기대 왜곡 하한선과 정리 1 및 정리 2의 상한선 정렬 등 수학적 원리가 정립되어 있습니다 [273c9c2b90f2]. 구현 및 실험 검증 측면에서 TurboQuant는 단일 NVIDIA A100 GPU 환경에서 DBpedia Entities 임베딩 데이터셋(학습용 100,000개, 쿼리 1,000개)을 활용하여 내부곱 추정 오차를 평가하고, Llama-3.1-8B-Instruct 기반 Needle In A Haystack 하류 태스크 검증을 수행하였습니다 [8356d73117ad, 273c9c2b90f2]. 비트 폭을 늘리면 분산이 감소하지만, 2비트 폭 조건에서 TurboQuant_prod의 내부곱 오차 분산은 일정하게 유지되는 반면 TurboQuant_mse는 평균 내부곱 크기에 따라 분산이 증가하는 오차 특성이 관찰되었습니다 [8356d73117ad, 273c9c2b90f2]. 이에 따라 확인된 최고 구간은 실험실 환경 PoC 검증 수준인 TRL 3입니다 [8356d73117ad, 273c9c2b90f2]. 연구 코드의 완전한 공개 여부나 다중 노드 클러스터 기반 실서빙 트래픽 처리, 장기 구동 신뢰성 데이터 등 TRL 4 이상 및 TRL 5-6 진입을 입증할 실증 근거는 문서에서 확인되지 않습니다.",273c9c2b90f2,turboquant-paper,papers_core,p.15,"This is because it establishes a lower bound on the expected distortion, rather than the worst-case
+error, and aligns seamlessly with our upper bounds presented in Theorem 1 and Theorem 2.
+4 Experiments
+All experiments are performed using a single NVIDIA A100 GPU. The experimental section is
+divided into two parts: one to empirically validate the theoretical results, and another to evaluate
+the performance of our methods on downstream tasks, specifically KV cache quantization and
+nearest neighbor vector search.
+4.1 Empirical Validation
+In this section, we verify the theoretical results established in previous sections. We conduct our
+experiments using the DBpedia Entities dataset, which has been encoded into a 1536-dimensional
+space using OpenAI3 embeddings. To perform our experiments, we randomly sample 100,000 data
+points from the dataset, denoted as training set, which serves as our primary dataset. Additionally,
+we extract 1,000 distinct entries, denoted as query set, to be used as query points.
+We evaluate two quantization methods: TurboQuant and TurboQuant . The method
+prod mse
+TurboQuant is designed to be optimzed for estimating the mean squared error (MSE) between
+mse
+the quantized and original vectors. In contrast, TurboQuant is unbiased for estimating the
+prod
+inner product between the quantized and original vectors.
+Both methods are applied to the task of inner product estimation by quantizing training set and
+analyzingthedistortionininnerproductcalculationsacrossdifferentbitwidths. AsshowninFig.1,
+increasing the bit width reduces variance in both methods. However, when used for inner product",,,,
+claim_maturity_itme_20261021,maturity,ITME,fact,"성숙도 분석은 세 계층으로 구분됩니다. CXL 표준 자체는 컨소시엄을 통해 정의된 통신 표준이며 [b5e8ef3cd27a], 상용 CMM-D 등 부품은 표준 기반 하드웨어 모듈 계층입니다 [b5e8ef3cd27a]. 실제 평가 대상인 ITME 아키텍처는 가중치와 롱컨텍스트 KV 캐시 저장을 위한 CXL-하이브리드 메모리 계층 및 컨트롤러 프리페치 제어 구조입니다 [476c1724f5ce, 76cd4abd99d2]. ITME 아키텍처 기준 확인된 최고 구간은 프로토타입/실험실 측정 수준인 TRL 3입니다 [76cd4abd99d2]. ITME는 MSHR과 하드웨어 FIFO 큐를 통한 비동기 프리페칭 제어 로직을 구성하고 chm_prefetch() 구동 시 pagemap을 통한 주소 변환 오버헤드 약 3us, mmap() 적용 시 약 1us의 지연이 발생함을 측정하여 1MB 전송 시간 대비 0.1% 미만의 잔여 오버헤드를 보임을 입증하였습니다 [76cd4abd99d2]. 그러나 상용 운영 환경 통합 실증, 다중 노드 서빙 신뢰성 지표 및 상용 양산 배포 데이터가 부재하여 TRL 4 이상의 상위 구간으로 판정할 수 없습니다.",b5e8ef3cd27a,pim-cxl-paper,papers_core,p.1,"Scalable Processing-Near-Memory for 1M-Token LLM Inference:
+CXL-Enabled KV-Cache Management Beyond GPU Limits
+DowonKim∗ MinJaeLee∗ JanghyeonKim
+HanyangUniversity HanyangUniversity HanyangUniversity
+RepublicofKorea RepublicofKorea RepublicofKorea
+kdw4537@hanyang.ac.kr lmj4666@hanyang.ac.kr kkt20@hanyang.ac.kr
+HyuckSungKwon HyeonggyuJeong Sang-SooPark
+HanyangUniversity HanyangUniversity SamsungElectronics
+RepublicofKorea RepublicofKorea RepublicofKorea
+momarom@hanyang.ac.kr hgjeong753@hanyang.ac.kr ss23.park@samsung.com
+MinyongYoon Si-DongRoh YongsukKwon
+SamsungElectronics SamsungElectronics SamsungElectronics
+RepublicofKorea RepublicofKorea RepublicofKorea
+casper.yoon@samsung.com sidong.roh@samsung.com yssh.kwon@samsung.com
+JininSo JungwookChoi†
+SamsungElectronics HanyangUniversity
+RepublicofKorea RepublicofKorea
+jinin.so@samsung.com choij@hanyang.ac.kr
+Abstract Keywords
+Theexpansionofcontextwindowsinlargelanguagemodels(LLMs) Long-contextLLMinference,Processing-Near-Memory(PNM),Com-
+tomulti-milliontokensintroducesseverememoryandcompute puteExpressLink(CXL),Key-Value(KV)cachemanagement,Hy-",,,,
+claim_maturity_itme_20261021,maturity,ITME,fact,"성숙도 분석은 세 계층으로 구분됩니다. CXL 표준 자체는 컨소시엄을 통해 정의된 통신 표준이며 [b5e8ef3cd27a], 상용 CMM-D 등 부품은 표준 기반 하드웨어 모듈 계층입니다 [b5e8ef3cd27a]. 실제 평가 대상인 ITME 아키텍처는 가중치와 롱컨텍스트 KV 캐시 저장을 위한 CXL-하이브리드 메모리 계층 및 컨트롤러 프리페치 제어 구조입니다 [476c1724f5ce, 76cd4abd99d2]. ITME 아키텍처 기준 확인된 최고 구간은 프로토타입/실험실 측정 수준인 TRL 3입니다 [76cd4abd99d2]. ITME는 MSHR과 하드웨어 FIFO 큐를 통한 비동기 프리페칭 제어 로직을 구성하고 chm_prefetch() 구동 시 pagemap을 통한 주소 변환 오버헤드 약 3us, mmap() 적용 시 약 1us의 지연이 발생함을 측정하여 1MB 전송 시간 대비 0.1% 미만의 잔여 오버헤드를 보임을 입증하였습니다 [76cd4abd99d2]. 그러나 상용 운영 환경 통합 실증, 다중 노드 서빙 신뢰성 지표 및 상용 양산 배포 데이터가 부재하여 TRL 4 이상의 상위 구간으로 판정할 수 없습니다.",76cd4abd99d2,itme-paper,papers_core,p.6,"overheadforlargedeterministicstreamsbyfetching𝑁 contiguous ITME GPU server
+GPU Memory (T1)
+pagesfromabaseaddress.
+ControlLogicandOperationalOverhead.Prefetchcommands KV Block ($ M 4 a .1 n ) gement CPU Staging Buffer (T2)
+areinsertedintoaninternalhardwareFIFOqueue,wherethecon- Multi-tier DMAPrefetching
+($ 4.2) CPU Store Buffer CPU Load Buffer
+trollerusesmissstatusholdingregisters(MSHRs)tooverlapmulti- ($ 4.1) ($ 4.1)
+Read Priority Scheduling
+pleoutstandingSSDreads.Thishardware-levelparallelismmasks ($ 4.2)
+Data Transfer ($4.1)
+backend storage latency by staging data into the DRAM cache
+RDMA
+beforeitisrequested.Ourmeasurementsindicatethattheopera- Remote Manager
+tionaloverheadofchm_prefetch()isapproximately3𝜇s,primarily
+User P
+($
+re
+4
+fe
+.3
+tc
+)
+h Lib.
+CXL-Hybrid Memory (T3
+D
+.5
+R
+)
+AM Cache
+duetoVA-to-PAtranslationthroughpagemap.Fordeterministic ($ 3.2)
+Remote CXL-Hybrid Memory
+workloadsinwhichweightsaredirectlymappedviammap(),this
+Figure6:OverallArchitectureofITME
+overheaddropstoabout1𝜇s.Giventhatasinglecommandtriggers
+themovementofa1MBchunk,this1–3𝜇slatencyaccountsfor
+CPUstagingbuffer.Duringtheevictionprocess,ITMEsequentially
+lessthan0.1%ofthetotaltransfertime,makingthesoftware-side",,,,
+claim_market_②_20261021,market,both,fact,"## ② 상용화/채택 현황
+- SK하이닉스의 CXL 2.0 기반 96GB CMM-DDR5 제품은 고객 검증(Customer validation)을 완료한 것으로 발표 단계이며, 실제 상업적 배포 확인은 미확인 상태이다 [714b5ae6c7bf].
+- 1bnm 32Gb DDR5 기반 128GB 제품은 고객 검증이 진행 중인 발표 단계이며, 배포 확인은 미확인 상태이다 [98adac38f1eb][714b5ae6c7bf].
+- TurboQuant 및 ITME의 상용화 및 배포 현황은 미확인 상태이다.",714b5ae6c7bf,skhynix-cmm-validation,ecosystem,p.1,"PRESS 
+
+SK hynix Completes Customer Validation of CXL 2.0-based DDR5
+ 
+
+News Highlights
+
+Completion of customer qualification of 96GB product to help customers reduce costs when applied to server systems
+
+128GB product of improved performance, equipped with 1bnm 32Gb DDR5, also in customer validation process
+
+Company to provide value unmatched by others through “Optimal Innovation”
+
+Seoul, April 23, 2025
+
+SK hynix Inc. (or “the company”, 
+www.skhynix.com
+) announced today that it has completed customer validation of 96GB CMM(CXL
+*
+ Memory Module)-DDR5, a DRAM solution product based on CXL 2.0.
+
+*
+ Compute eXpress Link (CXL): A next-generation interface that efficiently connects CPU, GPU, memory, and other components in high-performance computing systems to support massive, ultra-fast computation. Based on PCIe interface, CXL allows fast data transfer and has pooling capability to efficiently utilize memory
+
+ 
+
+ 
+
+The company said that it can process 36GB/s due to a 50% increase in capacity when the product is applied to the server systems and a 30% improvement in bandwidth compared to previous DDR5 modules. This can contribute to drastically reducing the total cost of ownership
+*
+ by customers in building and operating data centers.
+
+*
+ Total cost of ownership: Total cost of owning a product or service, from purchase to disposal. It also includes costs for deployment, maintenance, operations and upgrades",,,,
+claim_market_②_20261021,market,both,fact,"## ② 상용화/채택 현황
+- SK하이닉스의 CXL 2.0 기반 96GB CMM-DDR5 제품은 고객 검증(Customer validation)을 완료한 것으로 발표 단계이며, 실제 상업적 배포 확인은 미확인 상태이다 [714b5ae6c7bf].
+- 1bnm 32Gb DDR5 기반 128GB 제품은 고객 검증이 진행 중인 발표 단계이며, 배포 확인은 미확인 상태이다 [98adac38f1eb][714b5ae6c7bf].
+- TurboQuant 및 ITME의 상용화 및 배포 현황은 미확인 상태이다.",98adac38f1eb,skhynix-cmm-validation,ecosystem,p.1,"*
+ Total cost of ownership: Total cost of owning a product or service, from purchase to disposal. It also includes costs for deployment, maintenance, operations and upgrades
+
+Following the 96GB product validation, the company is proceeding with the validation process for 128GB product with another customer. This product, equipped with 32Gb DDR5 DRAM using the 1bnm process, or the fifth-generation of the 10-nanometer technology, has high performance per watt
+*
+. The company plans to complete the ongoing 128GB validation as soon as possible to establish a CXL product portfolio to support customers in a timely manner.
+
+*
+ Performance per watt: Indicator of data capacity per second that can be processed per unit of power
+
+SK hynix is making efforts to expand the CXL ecosystem along with the development of CXL DRAM. The company developed HMSDK
+*
+, software optimized for CMM-DDR5 and integrated it on Linux, the world’s largest open-source operating system, in September, improving the performance of CXL applied systems.
+
+*
+ Heterogeneous Memory S/W Development Kit (HMSDK): SK hynix’s unique development kit for heterogeneous memory software. It improves performance by expanding bandwidth through efficient crossbar array and rearranging data with appropriate memory device in accordance with data use frequency.
+
+“We are developing various solution products to fulfill Optimal Innovation
+*
+ in order to overcome the limitation of high cost and scalability of the existing system,” said Uksong Kang, Head of Next Gen PP&E. “We will provide optimized value to customers by dramatically improving the scalability and the flexibility of memory while meeting customers’ different needs.”",,,,
+claim_market_③_20261021,market,both,fact,"## ③ 생태계 지지
+- 표준화 동향으로 CXL 컨소시엄이 PCIe 6.0 기술 기반의 CXL 3.0 규격을 정의하였으며, 64GT/s 전송 속도, PAM-4 시그널링의 256B 플릿(flit), 128B 서브 플릿 단위 전송을 통한 2~5ns 지연 절감 변형 등을 포함한다 [bde42079227e].
+- SK하이닉스는 CMM-DDR5에 최적화된 이기종 메모리 소프트웨어 개발 키트인 HMSDK를 개발하여 Linux 운영체제에 통합하였다 [98adac38f1eb].
+- CXL 제품 및 PoC 관련 근거는 SK하이닉스의 CMM-DDR5(96GB 고객 검증 완료, 128GB 검증 진행 중)와 CXL 컨소시엄 표준화에 관한 내용으로, 이는 일반 CXL 근거이며 LLM 추론 워크로드 특화 여부 및 ITME 아키텍처 채택 여부는 미확인 상태이다 [98adac38f1eb][714b5ae6c7bf][bde42079227e].
+- 소프트웨어 프레임워크 측면에서 llm-compressor 등을 통한 FP8 KV 캐시 양자화 레시피 구성 스크립트가 확인된다 [5c1cd7ed15aa][7c257d93ce1e].
+
+근거 공백: 시장 규모/성장성 정량 리포트 | ITME 채택 현황 | TurboQuant 상용화/배포 현황 | CXL 제품의 LLM 추론 특화 여부",bde42079227e,cxl-whitepaper,ecosystem,p.2,"memory pooling, and security. These features enable many devices in a platform to migrate to CXL,
+while maintaining compatibility with PCIe 5.0 and the low-latency characteristics of CXL.
+Based on the resounding success of CXL 2.0 and feedback from the computer industry and the end-user
+community, the CXL consortium forged ahead to define the next generation of the specification to
+deliver even higher performance and encompass more use cases. The resulting CXL 3.0 specification is a
+major revision which unlocks the potential for transformative technologies and usages! Figure 2
+summarizes the journey of CXL specifications with major enhancements and features.
+Figure 2: CXL Features over Generations
+CXL 3.0, which is based on PCIe 6.0 technology, doubles the transfer rate to 64GT/s with no additional
+latency over previous generations. This allows for aggregate raw bandwidth of up to 256GB/s for x16
+width link. For low-latency transfers, CXL 3.0 leverages PCIe 6.0’s combination of lightweight FEC and
+strong CRC for error free transmission with 256B flits on PAM-4 signaling to achieve 64GT/s. CXL 3.0,
+however, goes further in introducing a latency-optimized flit variant to further reduce 2-5ns of latency
+by breaking up the CRC in 128B sub-flit granular transfers to mitigate store-and-forward overheads in
+the physical layer. As with previous generations of CXL, the new 256B flit format is backward compatible
+with 8GT/s, 16GT/s and 32GT/s which eases the transition to CXL 3.0.
+The combination of larger real-estate provided by CXL 3.0’s 256B flit with doubling of signaling rate",,,,
+claim_market_③_20261021,market,both,fact,"## ③ 생태계 지지
+- 표준화 동향으로 CXL 컨소시엄이 PCIe 6.0 기술 기반의 CXL 3.0 규격을 정의하였으며, 64GT/s 전송 속도, PAM-4 시그널링의 256B 플릿(flit), 128B 서브 플릿 단위 전송을 통한 2~5ns 지연 절감 변형 등을 포함한다 [bde42079227e].
+- SK하이닉스는 CMM-DDR5에 최적화된 이기종 메모리 소프트웨어 개발 키트인 HMSDK를 개발하여 Linux 운영체제에 통합하였다 [98adac38f1eb].
+- CXL 제품 및 PoC 관련 근거는 SK하이닉스의 CMM-DDR5(96GB 고객 검증 완료, 128GB 검증 진행 중)와 CXL 컨소시엄 표준화에 관한 내용으로, 이는 일반 CXL 근거이며 LLM 추론 워크로드 특화 여부 및 ITME 아키텍처 채택 여부는 미확인 상태이다 [98adac38f1eb][714b5ae6c7bf][bde42079227e].
+- 소프트웨어 프레임워크 측면에서 llm-compressor 등을 통한 FP8 KV 캐시 양자화 레시피 구성 스크립트가 확인된다 [5c1cd7ed15aa][7c257d93ce1e].
+
+근거 공백: 시장 규모/성장성 정량 리포트 | ITME 채택 현황 | TurboQuant 상용화/배포 현황 | CXL 제품의 LLM 추론 특화 여부",98adac38f1eb,skhynix-cmm-validation,ecosystem,p.1,"*
+ Total cost of ownership: Total cost of owning a product or service, from purchase to disposal. It also includes costs for deployment, maintenance, operations and upgrades
+
+Following the 96GB product validation, the company is proceeding with the validation process for 128GB product with another customer. This product, equipped with 32Gb DDR5 DRAM using the 1bnm process, or the fifth-generation of the 10-nanometer technology, has high performance per watt
+*
+. The company plans to complete the ongoing 128GB validation as soon as possible to establish a CXL product portfolio to support customers in a timely manner.
+
+*
+ Performance per watt: Indicator of data capacity per second that can be processed per unit of power
+
+SK hynix is making efforts to expand the CXL ecosystem along with the development of CXL DRAM. The company developed HMSDK
+*
+, software optimized for CMM-DDR5 and integrated it on Linux, the world’s largest open-source operating system, in September, improving the performance of CXL applied systems.
+
+*
+ Heterogeneous Memory S/W Development Kit (HMSDK): SK hynix’s unique development kit for heterogeneous memory software. It improves performance by expanding bandwidth through efficient crossbar array and rearranging data with appropriate memory device in accordance with data use frequency.
+
+“We are developing various solution products to fulfill Optimal Innovation
+*
+ in order to overcome the limitation of high cost and scalability of the existing system,” said Uksong Kang, Head of Next Gen PP&E. “We will provide optimized value to customers by dramatically improving the scalability and the flexibility of memory while meeting customers’ different needs.”",,,,
+claim_market_③_20261021,market,both,fact,"## ③ 생태계 지지
+- 표준화 동향으로 CXL 컨소시엄이 PCIe 6.0 기술 기반의 CXL 3.0 규격을 정의하였으며, 64GT/s 전송 속도, PAM-4 시그널링의 256B 플릿(flit), 128B 서브 플릿 단위 전송을 통한 2~5ns 지연 절감 변형 등을 포함한다 [bde42079227e].
+- SK하이닉스는 CMM-DDR5에 최적화된 이기종 메모리 소프트웨어 개발 키트인 HMSDK를 개발하여 Linux 운영체제에 통합하였다 [98adac38f1eb].
+- CXL 제품 및 PoC 관련 근거는 SK하이닉스의 CMM-DDR5(96GB 고객 검증 완료, 128GB 검증 진행 중)와 CXL 컨소시엄 표준화에 관한 내용으로, 이는 일반 CXL 근거이며 LLM 추론 워크로드 특화 여부 및 ITME 아키텍처 채택 여부는 미확인 상태이다 [98adac38f1eb][714b5ae6c7bf][bde42079227e].
+- 소프트웨어 프레임워크 측면에서 llm-compressor 등을 통한 FP8 KV 캐시 양자화 레시피 구성 스크립트가 확인된다 [5c1cd7ed15aa][7c257d93ce1e].
+
+근거 공백: 시장 규모/성장성 정량 리포트 | ITME 채택 현황 | TurboQuant 상용화/배포 현황 | CXL 제품의 LLM 추론 특화 여부",714b5ae6c7bf,skhynix-cmm-validation,ecosystem,p.1,"PRESS 
+
+SK hynix Completes Customer Validation of CXL 2.0-based DDR5
+ 
+
+News Highlights
+
+Completion of customer qualification of 96GB product to help customers reduce costs when applied to server systems
+
+128GB product of improved performance, equipped with 1bnm 32Gb DDR5, also in customer validation process
+
+Company to provide value unmatched by others through “Optimal Innovation”
+
+Seoul, April 23, 2025
+
+SK hynix Inc. (or “the company”, 
+www.skhynix.com
+) announced today that it has completed customer validation of 96GB CMM(CXL
+*
+ Memory Module)-DDR5, a DRAM solution product based on CXL 2.0.
+
+*
+ Compute eXpress Link (CXL): A next-generation interface that efficiently connects CPU, GPU, memory, and other components in high-performance computing systems to support massive, ultra-fast computation. Based on PCIe interface, CXL allows fast data transfer and has pooling capability to efficiently utilize memory
+
+ 
+
+ 
+
+The company said that it can process 36GB/s due to a 50% increase in capacity when the product is applied to the server systems and a 30% improvement in bandwidth compared to previous DDR5 modules. This can contribute to drastically reducing the total cost of ownership
+*
+ by customers in building and operating data centers.
+
+*
+ Total cost of ownership: Total cost of owning a product or service, from purchase to disposal. It also includes costs for deployment, maintenance, operations and upgrades",,,,
+claim_market_③_20261021,market,both,fact,"## ③ 생태계 지지
+- 표준화 동향으로 CXL 컨소시엄이 PCIe 6.0 기술 기반의 CXL 3.0 규격을 정의하였으며, 64GT/s 전송 속도, PAM-4 시그널링의 256B 플릿(flit), 128B 서브 플릿 단위 전송을 통한 2~5ns 지연 절감 변형 등을 포함한다 [bde42079227e].
+- SK하이닉스는 CMM-DDR5에 최적화된 이기종 메모리 소프트웨어 개발 키트인 HMSDK를 개발하여 Linux 운영체제에 통합하였다 [98adac38f1eb].
+- CXL 제품 및 PoC 관련 근거는 SK하이닉스의 CMM-DDR5(96GB 고객 검증 완료, 128GB 검증 진행 중)와 CXL 컨소시엄 표준화에 관한 내용으로, 이는 일반 CXL 근거이며 LLM 추론 워크로드 특화 여부 및 ITME 아키텍처 채택 여부는 미확인 상태이다 [98adac38f1eb][714b5ae6c7bf][bde42079227e].
+- 소프트웨어 프레임워크 측면에서 llm-compressor 등을 통한 FP8 KV 캐시 양자화 레시피 구성 스크립트가 확인된다 [5c1cd7ed15aa][7c257d93ce1e].
+
+근거 공백: 시장 규모/성장성 정량 리포트 | ITME 채택 현황 | TurboQuant 상용화/배포 현황 | CXL 제품의 LLM 추론 특화 여부",5c1cd7ed15aa,vllm-quantized-kvcache,ecosystem,p.1,"def
+ 
+process_and_tokenize
+(
+example
+,
+ 
+tokenizer
+:
+ 
+AutoTokenizer
+):
+
+ 
+""""""Convert chat messages to tokens.""""""
+
+ 
+text
+ 
+=
+ 
+tokenizer
+.
+apply_chat_template
+(
+example
+[
+""messages""
+],
+ 
+tokenize
+=
+False
+)
+
+ 
+return
+ 
+tokenizer
+(
+
+ 
+text
+,
+
+ 
+padding
+=
+False
+,
+
+ 
+max_length
+=
+MAX_SEQ_LEN
+,
+
+ 
+truncation
+=
+True
+,
+
+ 
+add_special_tokens
+=
+False
+,
+
+ 
+)
+
+def
+ 
+build_recipe
+(
+strategy
+:
+ 
+str
+)
+ 
+->
+ 
+QuantizationModifier
+:
+
+ 
+fp8_args
+ 
+=
+ 
+QuantizationArgs
+(
+num_bits
+=
+8
+,
+ 
+type
+=
+""float""
+,
+ 
+strategy
+=
+strategy
+)
+
+ 
+return
+ 
+QuantizationModifier
+(
+
+ 
+config_groups
+=
+{
+
+ 
+""attention""
+:
+ 
+QuantizationScheme
+(
+
+ 
+targets
+=
+[
+""LlamaAttention""
+],
+ 
+# Quantize queries: q_scale
+
+ 
+input_activations
+=
+fp8_args
+,
+
+ 
+)
+
+ 
+},
+
+ 
+kv_cache_scheme
+=
+fp8_args
+,
+ 
+# Quantize KV cache: k/v_scale
+
+ 
+)
+
+# -----------------------------
+
+# Main
+
+# -----------------------------
+
+def
+ 
+main
+():
+
+ 
+model
+ 
+=
+ 
+AutoModelForCausalLM
+.
+from_pretrained
+(
+MODEL_ID
+,
+ 
+torch_dtype
+=
+""auto""
+)
+
+ 
+tokenizer
+ 
+=
+ 
+AutoTokenizer
+.
+from_pretrained
+(
+MODEL_ID
+)
+
+ 
+ds
+ 
+=
+ 
+load_dataset
+(
+DATASET_ID
+,
+ 
+split
+=
+f
+""
+{
+DATASET_SPLIT
+}
+[:
+{
+NUM_CALIB_SAMPLES
+}
+]""
+)
+
+ 
+ds
+ 
+=
+ 
+ds
+.
+shuffle
+(
+seed
+=
+42
+)
+
+ 
+ds
+ 
+=
+ 
+ds
+.
+map
+(",,,,
+claim_market_③_20261021,market,both,fact,"## ③ 생태계 지지
+- 표준화 동향으로 CXL 컨소시엄이 PCIe 6.0 기술 기반의 CXL 3.0 규격을 정의하였으며, 64GT/s 전송 속도, PAM-4 시그널링의 256B 플릿(flit), 128B 서브 플릿 단위 전송을 통한 2~5ns 지연 절감 변형 등을 포함한다 [bde42079227e].
+- SK하이닉스는 CMM-DDR5에 최적화된 이기종 메모리 소프트웨어 개발 키트인 HMSDK를 개발하여 Linux 운영체제에 통합하였다 [98adac38f1eb].
+- CXL 제품 및 PoC 관련 근거는 SK하이닉스의 CMM-DDR5(96GB 고객 검증 완료, 128GB 검증 진행 중)와 CXL 컨소시엄 표준화에 관한 내용으로, 이는 일반 CXL 근거이며 LLM 추론 워크로드 특화 여부 및 ITME 아키텍처 채택 여부는 미확인 상태이다 [98adac38f1eb][714b5ae6c7bf][bde42079227e].
+- 소프트웨어 프레임워크 측면에서 llm-compressor 등을 통한 FP8 KV 캐시 양자화 레시피 구성 스크립트가 확인된다 [5c1cd7ed15aa][7c257d93ce1e].
+
+근거 공백: 시장 규모/성장성 정량 리포트 | ITME 채택 현황 | TurboQuant 상용화/배포 현황 | CXL 제품의 LLM 추론 특화 여부",7c257d93ce1e,vllm-quantized-kvcache,ecosystem,p.1,"ds
+ 
+=
+ 
+load_dataset
+(
+DATASET_ID
+,
+ 
+split
+=
+f
+""
+{
+DATASET_SPLIT
+}
+[:
+{
+NUM_CALIB_SAMPLES
+}
+]""
+)
+
+ 
+ds
+ 
+=
+ 
+ds
+.
+shuffle
+(
+seed
+=
+42
+)
+
+ 
+ds
+ 
+=
+ 
+ds
+.
+map
+(
+
+ 
+lambda
+ 
+ex
+:
+ 
+process_and_tokenize
+(
+ex
+,
+ 
+tokenizer
+),
+
+ 
+remove_columns
+=
+ds
+.
+column_names
+,
+
+ 
+)
+
+ 
+recipe
+ 
+=
+ 
+build_recipe
+(
+STRATEGY
+)
+
+ 
+oneshot
+(
+
+ 
+model
+=
+model
+,
+
+ 
+dataset
+=
+ds
+,
+
+ 
+recipe
+=
+recipe
+,
+
+ 
+max_seq_length
+=
+MAX_SEQ_LEN
+,
+
+ 
+num_calibration_samples
+=
+NUM_CALIB_SAMPLES
+,
+
+ 
+)
+
+ 
+save_dir
+ 
+=
+ 
+f
+""
+{
+MODEL_ID
+.
+rstrip
+(
+'/'
+)
+.
+split
+(
+'/'
+)[
+-
+1
+]
+}
+-kvattn-fp8-
+{
+STRATEGY
+}
+""
+
+ 
+model
+.
+save_pretrained
+(
+save_dir
+,
+ 
+save_compressed
+=
+True
+)
+
+ 
+tokenizer
+.
+save_pretrained
+(
+save_dir
+)
+
+if
+ 
+__name__
+ 
+==
+ 
+""__main__""
+:
+
+ 
+main
+()
+
+For more detailed and up-to-date examples, see the 
+llm-compressor
+ official examples
+.
+
+ Back to top",,,,
+claim-5d596e0cbc0ea69739a1f4c04dc08bdb42a7c55c2b2b34db62a41a852d7922e6,stakeholder,TurboQuant,fact,"vLLM 연구팀은 30B~200B+ 규모의 4개 모델과 5개 벤치마크 평가를 통해 FP8이 여전히 최적의 기본값으로 권장되며, TurboQuant k8v4는 2.4배의 미미한 KV 캐시 절감에 비해 처리량과 지연시간 저하가 지속되어 가치가 없고, 4bit-nc 변형은 메모리 압박 시 도움이 될 수 있으나 정확도·지연시간·처리량 측면에서 일정한 비용이 수반된다고 평가했다.",e-web-f51f1ad262a3,web-86488604acc6,제품발표,paragraph:2:chars:0-590,"TurboQuant , a method for KV-cache quantization, recently gained significant traction in the community due to the large advertised savings in GPU memory from very low bit-width quantization of a model's KV-cache. Unlike FP8 KV-cache quantization , which quantizes both the KV-cache storage and the attention computation itself using hardware-native FP8 Tensor Core operations, TurboQuant compresses only the KV-cache storage to 3-4 bits and dequantizes back to BF16 for the attention computation. This architectural difference has significant implications for both accuracy and performance.",,,,
+claim-5d596e0cbc0ea69739a1f4c04dc08bdb42a7c55c2b2b34db62a41a852d7922e6,stakeholder,TurboQuant,fact,"vLLM 연구팀은 30B~200B+ 규모의 4개 모델과 5개 벤치마크 평가를 통해 FP8이 여전히 최적의 기본값으로 권장되며, TurboQuant k8v4는 2.4배의 미미한 KV 캐시 절감에 비해 처리량과 지연시간 저하가 지속되어 가치가 없고, 4bit-nc 변형은 메모리 압박 시 도움이 될 수 있으나 정확도·지연시간·처리량 측면에서 일정한 비용이 수반된다고 평가했다.",e-web-cecab39a4a94,web-86488604acc6,제품발표,paragraph:3:chars:0-425,"However, most of the reported results were based on small models evaluated on short-context benchmarks that do not stress-test KV-cache quantization. To provide the community with more actionable data, we conducted a comprehensive study spanning four models (both dense-only and MoEs), from 30B to 200B+ parameters, and five benchmarks including both prefill-heavy long-context retrieval and decode-heavy reasoning workloads.",,,,
+claim-5d596e0cbc0ea69739a1f4c04dc08bdb42a7c55c2b2b34db62a41a852d7922e6,stakeholder,TurboQuant,fact,"vLLM 연구팀은 30B~200B+ 규모의 4개 모델과 5개 벤치마크 평가를 통해 FP8이 여전히 최적의 기본값으로 권장되며, TurboQuant k8v4는 2.4배의 미미한 KV 캐시 절감에 비해 처리량과 지연시간 저하가 지속되어 가치가 없고, 4bit-nc 변형은 메모리 압박 시 도움이 될 수 있으나 정확도·지연시간·처리량 측면에서 일정한 비용이 수반된다고 평가했다.",e-web-24a4820eee15,web-86488604acc6,제품발표,paragraph:5:chars:0-266,"FP8 via --kv-cache-dtype fp8 remains the best default for KV-cache quantization: it provides 2x KV-cache capacity with negligible accuracy loss, while matching BF16 on most performance metrics and substantially improving them in memory-constrained serving scenarios.",,,,
+claim-5d596e0cbc0ea69739a1f4c04dc08bdb42a7c55c2b2b34db62a41a852d7922e6,stakeholder,TurboQuant,fact,"vLLM 연구팀은 30B~200B+ 규모의 4개 모델과 5개 벤치마크 평가를 통해 FP8이 여전히 최적의 기본값으로 권장되며, TurboQuant k8v4는 2.4배의 미미한 KV 캐시 절감에 비해 처리량과 지연시간 저하가 지속되어 가치가 없고, 4bit-nc 변형은 메모리 압박 시 도움이 될 수 있으나 정확도·지연시간·처리량 측면에서 일정한 비용이 수반된다고 평가했다.",e-web-aeaa1c3c0dcf,web-86488604acc6,제품발표,paragraph:6:chars:0-208,TurboQuant k8v4 does not provide any significant advantage over FP8: it only provides modest KV-cache savings (2.4x vs 2x) which are not worth the consistent negative impact on throughput and latency metrics.,,,,
+claim-5d596e0cbc0ea69739a1f4c04dc08bdb42a7c55c2b2b34db62a41a852d7922e6,stakeholder,TurboQuant,fact,"vLLM 연구팀은 30B~200B+ 규모의 4개 모델과 5개 벤치마크 평가를 통해 FP8이 여전히 최적의 기본값으로 권장되며, TurboQuant k8v4는 2.4배의 미미한 KV 캐시 절감에 비해 처리량과 지연시간 저하가 지속되어 가치가 없고, 4bit-nc 변형은 메모리 압박 시 도움이 될 수 있으나 정확도·지연시간·처리량 측면에서 일정한 비용이 수반된다고 평가했다.",e-web-a3fc0daabd19,web-86488604acc6,제품발표,paragraph:7:chars:0-277,"TurboQuant 4bit-nc is likely the most practical TurboQuant variant: it helps under KV-cache memory pressure, but trades the extra capacity for moderate accuracy, latency, and throughput costs. It may still be viable for edge deployments where memory is the dominant constraint.",,,,
+claim-a44deb19a73d03e63839533716e725db2185a579ae358a782758953680ac5e14,stakeholder,TurboQuant,fact,"AMD ROCm 연구진은 vLLM 환경에서 AMD GPU용 TurboQuant 프로덕션 버전을 개발·배포했으며, KV 캐시 용량이 병목이 되는 장문 컨텍스트 멀티턴 에이전트 워크로드에서 캐시 상주율과 적중률을 높여 TTFT 단축 및 처리량 향상, 시스템 효율성을 달성할 수 있다고 밝혔다.",e-web-99c94985c515,web-e0544ce87fd0,미확인,paragraph:1:chars:0-73,Productionizing TurboQuant on AMD GPUs for KV-Cache-Bound LLM Inference #,,,,
+claim-a44deb19a73d03e63839533716e725db2185a579ae358a782758953680ac5e14,stakeholder,TurboQuant,fact,"AMD ROCm 연구진은 vLLM 환경에서 AMD GPU용 TurboQuant 프로덕션 버전을 개발·배포했으며, KV 캐시 용량이 병목이 되는 장문 컨텍스트 멀티턴 에이전트 워크로드에서 캐시 상주율과 적중률을 높여 TTFT 단축 및 처리량 향상, 시스템 효율성을 달성할 수 있다고 밝혔다.",e-web-01d13d7fb302,web-e0544ce87fd0,미확인,paragraph:4:chars:0-532,"TurboQuant (TQ) is a recently published KV-cache compression algorithm [1]. By pairing a structured rotation with a small, fixed codebook, TQ aims to push KV cache down to 4/3/2 bits with surprisingly little accuracy loss in the offline accuracy-only setting it was originally analyzed in. In this work, we focus on what is required to translate that algorithm into a competitive production deployment on AMD GPUs, where additional practical considerations around accuracy, kernel performance, and serving behavior become important.",,,,
+claim-a44deb19a73d03e63839533716e725db2185a579ae358a782758953680ac5e14,stakeholder,TurboQuant,fact,"AMD ROCm 연구진은 vLLM 환경에서 AMD GPU용 TurboQuant 프로덕션 버전을 개발·배포했으며, KV 캐시 용량이 병목이 되는 장문 컨텍스트 멀티턴 에이전트 워크로드에서 캐시 상주율과 적중률을 높여 TTFT 단축 및 처리량 향상, 시스템 효율성을 달성할 수 있다고 밝혔다.",e-web-9add553ed367,web-e0544ce87fd0,미확인,paragraph:5:chars:0-657,"In this post, we share our experience building and deploying an improved, productionized version of TurboQuant on AMD GPUs via vLLM. TurboQuant matters most when KV-cache capacity, rather than compute, becomes the bottleneck—a regime that commonly appears in long-context, multi-turn agentic workloads, where improving KV-cache residency and hit rate can materially reduce latency and increase throughput. We will break down our analysis of the algorithm, the refinements we made to resolve the practical bottlenecks of the original design, and the kernel-level optimizations required to make TurboQuant competitive with well-established BF16/FP8 baselines.",,,,
+claim-a44deb19a73d03e63839533716e725db2185a579ae358a782758953680ac5e14,stakeholder,TurboQuant,fact,"AMD ROCm 연구진은 vLLM 환경에서 AMD GPU용 TurboQuant 프로덕션 버전을 개발·배포했으며, KV 캐시 용량이 병목이 되는 장문 컨텍스트 멀티턴 에이전트 워크로드에서 캐시 상주율과 적중률을 높여 TTFT 단축 및 처리량 향상, 시스템 효율성을 달성할 수 있다고 밝혔다.",e-web-cd390149c110,web-e0544ce87fd0,미확인,paragraph:7:chars:0-408,"We are showcasing a specific scenario for long-context multi-turn agents where TurboQuant is especially effective. In these scenarios, KV cache capacity often becomes the bottleneck, and reducing KV-cache footprint improves cache residency and hit rate. This translates into lower TTFT, higher throughput, and strong overall system efficiency, while preserving accuracy well in the recommended configuration.",,,,
+claim-72303f9326fe371850d11047194f31f7c3eced23365cc199edb09c3f296830d0,stakeholder,TurboQuant,fact,Spheron은 2개의 H100 SXM5 환경에서 70B FP16 모델(32K 컨텍스트) 서빙 시 TurboQuant를 통해 노드당 동시 수용 사용자 수를 약 2명에서 약 11명으로 늘려 사용자 시간당 비용을 크게 낮출 수 있다고 평가했다.,e-web-4a80f86f54df,web-304b34d4df22,제품발표,paragraph:1:chars:0-568,"The KV cache quietly becomes your VRAM bottleneck as context length grows. At 128K tokens, a 70B model's KV cache alone consumes around 40 GB, nearly double the headroom available on two H100 SXM5s after loading the model weights. TurboQuant, a new method from Google Research (arXiv 2504.19874, ICLR 2026), compresses that KV cache 6x and speeds up attention computation 8x. If you're running long-context inference or serving high-concurrency workloads, this is worth understanding now. For broader GPU memory context, see our GPU memory requirements for LLMs guide.",,,,
+claim-72303f9326fe371850d11047194f31f7c3eced23365cc199edb09c3f296830d0,stakeholder,TurboQuant,fact,Spheron은 2개의 H100 SXM5 환경에서 70B FP16 모델(32K 컨텍스트) 서빙 시 TurboQuant를 통해 노드당 동시 수용 사용자 수를 약 2명에서 약 11명으로 늘려 사용자 시간당 비용을 크게 낮출 수 있다고 평가했다.,e-web-2c65e2508ed1,web-304b34d4df22,제품발표,paragraph:5:chars:0-168,"Concurrency: on 2x H100 SXM5 serving 70B FP16 at 32K context, users per node rise from ~2 to ~11, cutting cost per user-hour from ~$2.64 to ~$0.48 at 12 Oct 2026 rates.",,,,
+claim-454328165d95f466775450d3e33ebbe8759f3472d5470c5f986a285b7d012f3f,stakeholder,ITME,fact,ITME 개발진은 CXL 하이브리드 메모리를 활용해 TB 규모의 바이트 주소 지정 원격 확장을 구성함으로써 호스트 메모리 한계를 초과하는(beyond host memory limits) 대규모 KV 캐시 설치 공간을 수용하여 기존 CPU 오프로드 대비 최대 35.7%의 처리량 향상을 달성했다고 보고했다.,e-web-66d419e04424,web-46e17bad959c,미확인,paragraph:2:chars:0-1766,"The rapid shift toward agentic and long-context workloads in Large Language Models (LLMs) is pushing the industry beyond the capacity of individual servers toward disaggregated shared storage to handle TB-scale context states. This movement has led to the emergence of specialized shared context layers designed to externalize and share cumulative inference states across distributed clusters. While offloading to a data processing unit (DPU) within just-a-bunch-of-flash (JBOF) architectures accelerates NVMe-over-fabrics (NVMe-oF) target processing, the need for sophisticated software-level optimization and cost-efficiency burdens remain significant. Consequently, the ideal architecture for scaling this shared context infrastructure is still an active area of exploration. In this paper, we propose ITME (Inference Tiered Memory Expansion), which leverages a CXL-hybrid memory to present a massive, TB-scale byte-addressable remote memory expansion. This approach enables cost-efficient scaling and simplifies the software stack through direct byte-addressability, effectively addressing the challenges of shared context infrastructure. Our key insight is that the deterministic access patterns of voluminous model weights and prefix caches enable the system to proactively manage data movement across the memory-storage hierarchy. We validate ITME by evaluating its performance potential with production-grade SK Hynix CMM and PCIe Gen5 NVMe SSDs, while further demonstrating its functional feasibility through an FPGA-based hardware prototype. Overall, ITME enhances conventional CPU-offloading by providing additional remote memory expansion to accommodate large KV cache footprints beyond host memory limits, achieving up to a 35.7% throughput improvement.",,,,
+claim_domain_tq_20261021,domain_assessment,TurboQuant,fact,"TurboQuant는 b=2 비트 폭(Bit-width) 조건에서 TurboQuant_prod 방식 적용 시 내적 왜곡(Inner-product distortion)의 분산이 평균 내적 값과 무관하게 일정하게 유지되는 반면, TurboQuant_mse는 평균 내적 증가에 따라 오차 분산이 증가하는 특성을 보입니다 [8356d73117ad]. Llama-3.1-8B-Instruct 모델을 대상으로 최대 104k 토큰 길이까지 진행된 Needle-In-A-Haystack 평가(하드웨어 사양 및 동시성 부하 조건 미기재)에서 TurboQuant는 0.997의 검색 점수를 기록하여 Full-Precision(0.997)과 동등한 작업 정확도를 달성했습니다 [af82c138d6c1]. 알고리즘 압축을 통한 GPU 메모리 절감량 및 서빙 배치 크기(Batch Size) 확장 효과, Perplexity 손실 폭에 대한 수치는 제공된 논문 근거에 명시되지 않았으며, 전체 추론 처리량(Throughput) 수치 또한 처리량 근거 미확인 상태입니다.",8356d73117ad,turboquant-paper,papers_core,p.17,"(a) TurboQuant
+prod
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.01
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.06
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.10
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.17
+×
+(b) TurboQuant
+mse
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.01
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.06
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.10
+×
+4
+2
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.17
+×
+Figure 2: The variance of Inner-product error remains constant for TurboQuant , while in
+prod
+TurboQuant increases with the average inner product. Bit-width is b = 2.
+mse
+sentence (the ”needle”) at an arbitrary location within a much larger text (the ”haystack”) and
+assessing whether the model can successfully extract it.
+Following the experimental setup of Fu et al. [21], we conduct evaluations using the Llama-3.1-
+8B-Instruct model. To analyze performance across different input sequence lengths, we vary the",,,,
+claim_domain_tq_20261021,domain_assessment,TurboQuant,fact,"TurboQuant는 b=2 비트 폭(Bit-width) 조건에서 TurboQuant_prod 방식 적용 시 내적 왜곡(Inner-product distortion)의 분산이 평균 내적 값과 무관하게 일정하게 유지되는 반면, TurboQuant_mse는 평균 내적 증가에 따라 오차 분산이 증가하는 특성을 보입니다 [8356d73117ad]. Llama-3.1-8B-Instruct 모델을 대상으로 최대 104k 토큰 길이까지 진행된 Needle-In-A-Haystack 평가(하드웨어 사양 및 동시성 부하 조건 미기재)에서 TurboQuant는 0.997의 검색 점수를 기록하여 Full-Precision(0.997)과 동등한 작업 정확도를 달성했습니다 [af82c138d6c1]. 알고리즘 압축을 통한 GPU 메모리 절감량 및 서빙 배치 크기(Batch Size) 확장 효과, Perplexity 손실 폭에 대한 수치는 제공된 논문 근거에 명시되지 않았으며, 전체 추론 처리량(Throughput) 수치 또한 처리량 근거 미확인 상태입니다.",af82c138d6c1,turboquant-paper,papers_core,p.19,"SnapKV
+Score: 0.858
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+PyramidKV
+Score: 0.895
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+KIVI
+Score: 0.981
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+PolarQuant
+Score: 0.995
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+Full-Precision
+Score: 0.997
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+TurboQuant
+Score: 0.997
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+Figure 4: Evaluation of Llama-3.1-8B-Instruct on the “Needle-In-A-Haystack” test, where a",,,,
+claim_domain_itme_20261021,domain_assessment,ITME,fact,"ITME는 LLM 추론 데이터 유형별 계층화 방식을 통해 정적 대용량 특성을 지닌 가중치(Weights)와 누적 대용량 특성을 지닌 장기 컨텍스트(Long-context KV)를 ITME 계층의 타깃으로 할당하고, 활성화값(Activations) 및 작업 KV(Working KV)는 GPU 메모리 또는 호스트 메모리에 할당하도록 분류합니다 [476c1724f5ce]. 계층 간 연계를 위해 GPU 메모리(T1), CPU Store Buffer와 CPU Load Buffer로 구성된 CPU Staging Buffer(T2), RDMA 기반 데이터 전송 구조를 갖추고 있으며 [9f93ea05cfe6], Prefetch Buffer와 메타데이터 관리 구조를 포함합니다 [209944b3492b]. 다만 CXL 메모리 풀링 및 오프로드를 통한 동시 세션(Concurrent Sessions) 수용 한계 확장 수치와 호스트-디바이스 간 데이터 전송 지연(Latency) 및 TTFT(첫 토큰 지연)에 대한 정량적 영향도(모델명, 하드웨어 사양, 동시성 부하 조건)는 제공된 근거에서 확인되지 않습니다.",476c1724f5ce,itme-paper,papers_core,p.2,"(p2 표)
+| DataType | Predict. | Perf. | TargetTier | Capacity |
+|---|---|---|---|---|
+| Weights | Deterministic | Critical | Our(ITME) | Static(Large) |
+| Activations | High | Critical | GPUMem./HostMem. | Transient(Small) |
+| WorkingKV | Low | Critical | GPUMem./HostMem. | Incremental(Moderate) |
+| Long-contextKV | Moderate | Moderate | Our(ITME) | Cumulative(Large) |",,,,
+claim_domain_itme_20261021,domain_assessment,ITME,fact,"ITME는 LLM 추론 데이터 유형별 계층화 방식을 통해 정적 대용량 특성을 지닌 가중치(Weights)와 누적 대용량 특성을 지닌 장기 컨텍스트(Long-context KV)를 ITME 계층의 타깃으로 할당하고, 활성화값(Activations) 및 작업 KV(Working KV)는 GPU 메모리 또는 호스트 메모리에 할당하도록 분류합니다 [476c1724f5ce]. 계층 간 연계를 위해 GPU 메모리(T1), CPU Store Buffer와 CPU Load Buffer로 구성된 CPU Staging Buffer(T2), RDMA 기반 데이터 전송 구조를 갖추고 있으며 [9f93ea05cfe6], Prefetch Buffer와 메타데이터 관리 구조를 포함합니다 [209944b3492b]. 다만 CXL 메모리 풀링 및 오프로드를 통한 동시 세션(Concurrent Sessions) 수용 한계 확장 수치와 호스트-디바이스 간 데이터 전송 지연(Latency) 및 TTFT(첫 토큰 지연)에 대한 정량적 영향도(모델명, 하드웨어 사양, 동시성 부하 조건)는 제공된 근거에서 확인되지 않습니다.",9f93ea05cfe6,itme-paper,papers_core,p.6,"(p6 표)
+| GPU Memory (T1) |  |  |  |
+|---|---|---|---|
+| CPU Staging Buffer (T2)
+CPU Store Buffer CPU Load Buffer
+($ 4.1) ($ 4.1) |  |  |  |
+|  | Data Transfer ($4.1) |  |  |
+|  |  | RDMA |  |",,,,
+claim_domain_itme_20261021,domain_assessment,ITME,fact,"ITME는 LLM 추론 데이터 유형별 계층화 방식을 통해 정적 대용량 특성을 지닌 가중치(Weights)와 누적 대용량 특성을 지닌 장기 컨텍스트(Long-context KV)를 ITME 계층의 타깃으로 할당하고, 활성화값(Activations) 및 작업 KV(Working KV)는 GPU 메모리 또는 호스트 메모리에 할당하도록 분류합니다 [476c1724f5ce]. 계층 간 연계를 위해 GPU 메모리(T1), CPU Store Buffer와 CPU Load Buffer로 구성된 CPU Staging Buffer(T2), RDMA 기반 데이터 전송 구조를 갖추고 있으며 [9f93ea05cfe6], Prefetch Buffer와 메타데이터 관리 구조를 포함합니다 [209944b3492b]. 다만 CXL 메모리 풀링 및 오프로드를 통한 동시 세션(Concurrent Sessions) 수용 한계 확장 수치와 호스트-디바이스 간 데이터 전송 지연(Latency) 및 TTFT(첫 토큰 지연)에 대한 정량적 영향도(모델명, 하드웨어 사양, 동시성 부하 조건)는 제공된 근거에서 확인되지 않습니다.",209944b3492b,itme-paper,papers_core,p.4,"(p4 표)
+| Meta
+Data |
+|---|
+| Prefetch
+Buffer |",,,,
+claim_domain_hypo_20261021,domain_assessment,both,hypothesis,"본 가설은 TurboQuant와 ITME의 단독 기술 특성을 기반으로 도출한 것이며, 두 기술의 결합에 대한 실측 근거가 없는 추론입니다. TurboQuant가 b=2 비트 폭에서도 Full-Precision 수준의 검색 점수(0.997)를 유지하며 내적 오차 분산을 관리하는 압축 특성을 보이고 [8356d73117ad][af82c138d6c1], ITME가 Long-context KV를 별도 타깃 계층으로 오프로드하고 CPU 스테이징 및 프리페치 버퍼를 통해 데이터를 관리하는 하드웨어 계층 구조를 갖춤에 따라 [476c1724f5ce][9f93ea05cfe6][209944b3492b], 두 기술을 결합할 경우 ITME 계층으로 오프로드되는 KV 캐시의 데이터 크기가 축소되어 버퍼 전송 대역폭 부담이 완화될 수 있다는 추론을 수립할 수 있습니다. 다만 압축 연산 오버헤드와 ITME 프리페치 메커니즘 간의 실질적 상호작용 및 지연 시간 변화에 대한 결합 실측 데이터는 부재합니다.",8356d73117ad,turboquant-paper,papers_core,p.17,"(a) TurboQuant
+prod
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.01
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.06
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.10
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.17
+×
+(b) TurboQuant
+mse
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.01
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.06
+×
+3
+2
+1
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.10
+×
+4
+2
+0
+0.05 0.00 0.05
+−InnerProductDistortion
+ycneuqerF
+106 AvgIP=0.17
+×
+Figure 2: The variance of Inner-product error remains constant for TurboQuant , while in
+prod
+TurboQuant increases with the average inner product. Bit-width is b = 2.
+mse
+sentence (the ”needle”) at an arbitrary location within a much larger text (the ”haystack”) and
+assessing whether the model can successfully extract it.
+Following the experimental setup of Fu et al. [21], we conduct evaluations using the Llama-3.1-
+8B-Instruct model. To analyze performance across different input sequence lengths, we vary the",,,,
+claim_domain_hypo_20261021,domain_assessment,both,hypothesis,"본 가설은 TurboQuant와 ITME의 단독 기술 특성을 기반으로 도출한 것이며, 두 기술의 결합에 대한 실측 근거가 없는 추론입니다. TurboQuant가 b=2 비트 폭에서도 Full-Precision 수준의 검색 점수(0.997)를 유지하며 내적 오차 분산을 관리하는 압축 특성을 보이고 [8356d73117ad][af82c138d6c1], ITME가 Long-context KV를 별도 타깃 계층으로 오프로드하고 CPU 스테이징 및 프리페치 버퍼를 통해 데이터를 관리하는 하드웨어 계층 구조를 갖춤에 따라 [476c1724f5ce][9f93ea05cfe6][209944b3492b], 두 기술을 결합할 경우 ITME 계층으로 오프로드되는 KV 캐시의 데이터 크기가 축소되어 버퍼 전송 대역폭 부담이 완화될 수 있다는 추론을 수립할 수 있습니다. 다만 압축 연산 오버헤드와 ITME 프리페치 메커니즘 간의 실질적 상호작용 및 지연 시간 변화에 대한 결합 실측 데이터는 부재합니다.",af82c138d6c1,turboquant-paper,papers_core,p.19,"SnapKV
+Score: 0.858
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+PyramidKV
+Score: 0.895
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+KIVI
+Score: 0.981
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+PolarQuant
+Score: 0.995
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+Full-Precision
+Score: 0.997
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+TurboQuant
+Score: 0.997
+0
+11
+22
+33
+44
+56
+67
+78
+89
+100
+4k 6k 10k 16k 26k 41k 65k 104k
+TokenLimit
+tnecrePhtpeD
+1.00
+0.75
+0.50
+0.25
+0.00
+erocS
+Figure 4: Evaluation of Llama-3.1-8B-Instruct on the “Needle-In-A-Haystack” test, where a",,,,
+claim_domain_hypo_20261021,domain_assessment,both,hypothesis,"본 가설은 TurboQuant와 ITME의 단독 기술 특성을 기반으로 도출한 것이며, 두 기술의 결합에 대한 실측 근거가 없는 추론입니다. TurboQuant가 b=2 비트 폭에서도 Full-Precision 수준의 검색 점수(0.997)를 유지하며 내적 오차 분산을 관리하는 압축 특성을 보이고 [8356d73117ad][af82c138d6c1], ITME가 Long-context KV를 별도 타깃 계층으로 오프로드하고 CPU 스테이징 및 프리페치 버퍼를 통해 데이터를 관리하는 하드웨어 계층 구조를 갖춤에 따라 [476c1724f5ce][9f93ea05cfe6][209944b3492b], 두 기술을 결합할 경우 ITME 계층으로 오프로드되는 KV 캐시의 데이터 크기가 축소되어 버퍼 전송 대역폭 부담이 완화될 수 있다는 추론을 수립할 수 있습니다. 다만 압축 연산 오버헤드와 ITME 프리페치 메커니즘 간의 실질적 상호작용 및 지연 시간 변화에 대한 결합 실측 데이터는 부재합니다.",476c1724f5ce,itme-paper,papers_core,p.2,"(p2 표)
+| DataType | Predict. | Perf. | TargetTier | Capacity |
+|---|---|---|---|---|
+| Weights | Deterministic | Critical | Our(ITME) | Static(Large) |
+| Activations | High | Critical | GPUMem./HostMem. | Transient(Small) |
+| WorkingKV | Low | Critical | GPUMem./HostMem. | Incremental(Moderate) |
+| Long-contextKV | Moderate | Moderate | Our(ITME) | Cumulative(Large) |",,,,
+claim_domain_hypo_20261021,domain_assessment,both,hypothesis,"본 가설은 TurboQuant와 ITME의 단독 기술 특성을 기반으로 도출한 것이며, 두 기술의 결합에 대한 실측 근거가 없는 추론입니다. TurboQuant가 b=2 비트 폭에서도 Full-Precision 수준의 검색 점수(0.997)를 유지하며 내적 오차 분산을 관리하는 압축 특성을 보이고 [8356d73117ad][af82c138d6c1], ITME가 Long-context KV를 별도 타깃 계층으로 오프로드하고 CPU 스테이징 및 프리페치 버퍼를 통해 데이터를 관리하는 하드웨어 계층 구조를 갖춤에 따라 [476c1724f5ce][9f93ea05cfe6][209944b3492b], 두 기술을 결합할 경우 ITME 계층으로 오프로드되는 KV 캐시의 데이터 크기가 축소되어 버퍼 전송 대역폭 부담이 완화될 수 있다는 추론을 수립할 수 있습니다. 다만 압축 연산 오버헤드와 ITME 프리페치 메커니즘 간의 실질적 상호작용 및 지연 시간 변화에 대한 결합 실측 데이터는 부재합니다.",9f93ea05cfe6,itme-paper,papers_core,p.6,"(p6 표)
+| GPU Memory (T1) |  |  |  |
+|---|---|---|---|
+| CPU Staging Buffer (T2)
+CPU Store Buffer CPU Load Buffer
+($ 4.1) ($ 4.1) |  |  |  |
+|  | Data Transfer ($4.1) |  |  |
+|  |  | RDMA |  |",,,,
+claim_domain_hypo_20261021,domain_assessment,both,hypothesis,"본 가설은 TurboQuant와 ITME의 단독 기술 특성을 기반으로 도출한 것이며, 두 기술의 결합에 대한 실측 근거가 없는 추론입니다. TurboQuant가 b=2 비트 폭에서도 Full-Precision 수준의 검색 점수(0.997)를 유지하며 내적 오차 분산을 관리하는 압축 특성을 보이고 [8356d73117ad][af82c138d6c1], ITME가 Long-context KV를 별도 타깃 계층으로 오프로드하고 CPU 스테이징 및 프리페치 버퍼를 통해 데이터를 관리하는 하드웨어 계층 구조를 갖춤에 따라 [476c1724f5ce][9f93ea05cfe6][209944b3492b], 두 기술을 결합할 경우 ITME 계층으로 오프로드되는 KV 캐시의 데이터 크기가 축소되어 버퍼 전송 대역폭 부담이 완화될 수 있다는 추론을 수립할 수 있습니다. 다만 압축 연산 오버헤드와 ITME 프리페치 메커니즘 간의 실질적 상호작용 및 지연 시간 변화에 대한 결합 실측 데이터는 부재합니다.",209944b3492b,itme-paper,papers_core,p.4,"(p4 표)
+| Meta
+Data |
+|---|
+| Prefetch
+Buffer |",,,,

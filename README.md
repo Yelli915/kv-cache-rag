@@ -10,7 +10,7 @@ KV cache 최적화 기술을 소프트웨어·하드웨어 두 진영에서 선�
 **판교 8반** · 권수진 · 권예리 · 김민 · 박인기 · 정승원
 
 - 계약 문서 → [docs/interface.md](docs/interface.md)
-- 인수 기록 → [docs/r1-handoff.md](docs/r1-handoff.md) · [docs/r3-handoff.md](docs/r3-handoff.md)
+- 구현 경위와 결정 기록 → [docs/history.md](docs/history.md)
 
 ---
 
@@ -34,7 +34,7 @@ KV cache 최적화 기술을 소프트웨어·하드웨어 두 진영에서 선�
   `scripts/prepare_sources.py`가 SHA-256·쪽수 매니페스트 생성)
 - 근거 소재별 컬렉션 분리(`papers_core`/`ecosystem`/`context`)로 관점 간 근거 오염 방지
 - dense(FAISS, multilingual-e5-small) 단일 검색 + 역할별 컬렉션·scope 접근 제어(`ROLE_COLLECTIONS`)
-- 결정적(비-LLM) 인용 검증과 사람의 내용 검토를 `review` 노드에서 수행, 미해결 오류는
+- 결정적(비-LLM) 인용·수치 검증과 사람의 내용 검토를 `review` 노드에서 수행, 미해결 오류는
   `fail`이 로그를 남기고 제출용 출력을 차단
 - 검토 대기 상태에서 실행을 멈추고 사람의 내용 검토 후 재개(`app.py --resume <run_id>`)
 - 확증 편향 방지 전략 : 상충을 강제하지 않되(억지 상충 금지) 기술별 검색 기회를 맞추고,
@@ -43,10 +43,11 @@ KV cache 최적화 기술을 소프트웨어·하드웨어 두 진영에서 선�
 ## Tech Stack
 
 - **Framework** : LangGraph
-- **LLM/Generator** : gpt-5.6-luna (fallback: gpt-4.1-mini)
-- **LLM/Judge** : 해당 없음 — 인용 검증은 LLM 채점이 아닌 인덱스 실물 대조 방식의 결정적 검사
-- **Retrieval** : FAISS dense 단일 모드 (Hit@K·MRR@K 측정 스크립트 구현, 정답 청크 라벨링
-  미완으로 수치 미확정)
+- **LLM/Generator** : gemini-3.8-flash (`LLM_PROVIDER`·`LLM_MODEL` 로 OpenAI 등 교체 가능)
+- **LLM/Judge** : 해당 없음 — 인용·수치 검증은 LLM 채점이 아닌 원문 대조 방식의 결정적 검사
+  (수치 변조 탐지율 `eval/numeric_guard_eval.py`, 결과는 `docs/evidence/improved/`)
+- **Retrieval** : FAISS dense 단일 모드 — 28문항 골든셋 Hit@5 0.68 (ko 0.57 / en 0.79).
+  BM25+RRF는 0.75로 경향만 보여 도입 보류. 실측과 PDF 추출 수정은 [docs/evidence/retrieval/](docs/evidence/retrieval/README.md)
 - **Embedding** : intfloat/multilingual-e5-small (384차원, cross-lingual, revision 고정)
 
 ---
@@ -124,15 +125,15 @@ brew install pango               # macOS. weasyprint 가 libpango 를 요구한�
 cp .env.example .env
 ```
 
-`.env` 에 키 두 개가 필요하다. **둘 다 없으면 실행이 시작되지 않는다.**
+`.env` 에 키 두 개가 필요하다. **하나라도 없으면 실행이 실패한다** (시작 전 키 확인은 없다).
 
 | 키 | 쓰는 곳 | 없으면 |
 |---|---|---|
-| `OPENAI_API_KEY` | 기술 조사·TRL·시장성·도메인·이해관계자·종합 | `get_llm()` 이 `OpenAIError` 로 즉시 중단 |
+| `GOOGLE_API_KEY` | 기술 조사·TRL·시장성·도메인·이해관계자·종합 (Gemini) | 첫 LLM 호출에서 인증 오류로 중단 |
 | `TAVILY_API_KEY` | 이해관계자 노드의 웹 검색 | stakeholder 가 `status=failed` → 실행 전체 failed |
 
-`pango` 가 없어도 파이프라인은 정상 종료한다. Markdown 까지만 나오고 그 사실이
-`runs/<run_id>/submission.json` 에 남는다.
+`pango` 가 없어도 파이프라인은 정상 종료한다. Markdown 까지만 나오고 그 사유가
+콘솔과 `trace.jsonl` 의 `publish` 이벤트에 남는다.
 
 ### 1. 원문 수집 (최초 1회)
 
@@ -155,6 +156,8 @@ uv run python -m scripts.ingest
 ```
 
 수집 → 200쪽 가드 → 청킹 → 컬렉션 분리 → 기술별 필터를 한 번에 확인한다.
+첫 색인은 PDF 추출·임베딩으로 약 40초 걸리고, 결과가 `data/index/`에 캐시돼 이후에는 약 15초다
+(대부분 모델 로드). 원문이나 추출 코드가 바뀌면 자동으로 다시 만든다.
 
 ### 3. 파이프라인 실행
 
@@ -171,7 +174,7 @@ ID 대조만으로 자동 통과시키지 않는다. 팀원이 주장과 근거�
 
 Assessment 중 하나라도 `failed` 거나 미해결 인용 오류가 남으면 **검토 기회 없이
 `failed` 로 끝난다** — `final_check` 가 failed 를 검토 대기보다 먼저 본다(§7).
-사유는 `runs/<run_id>/run.json` 과 `validation-errors.json` 에 있다.
+사유는 `runs/<run_id>/run.json` 과 `trace.jsonl` 의 `fail` 이벤트에 있다.
 
 ```
 검토 대기 — Claim 14건. runs/<run_id>/review.csv 의 review_result(확인|부결)·reviewer 를 채운 뒤
@@ -211,31 +214,32 @@ uv run python app.py --resume <run_id>
 |---|---|
 | 보고서 Markdown | `runs/<run_id>/report.md` |
 | 제출본 PDF | `runs/<run_id>/final/RAG-Output_판교_8반_….pdf` |
-| 생성 여부와 사유 | `runs/<run_id>/submission.json` |
 | 검토 기록 | `runs/<run_id>/review.csv` |
 | 실행 기록 | `runs/<run_id>/run.json` · `trace.jsonl` · `state.json` |
 
 PDF 는 **검증을 통과했을 때만** 나온다(§8 — 무효 인용이 남으면 제출용 출력을 막는다).
 품질 점검(SUMMARY 분량·한글 글꼴·표 잘림·참고문헌 위치, §9)에 걸려도 만들지 않는다.
-왜 안 나왔는지는 `submission.json` 에 적힌다.
+왜 안 나왔는지는 콘솔과 `trace.jsonl` 의 `publish` 이벤트에 적힌다.
 
 ### run_status 읽는 법
 
 | 값 | 뜻 |
 |---|---|
 | `completed` | 모든 Assessment 가 completed 이고 내용 검토를 통과했다 (근거 공백은 있을 수 있다) |
-| `partial` | 검토 대기로 멈췄거나, 근거 공백이 남은 채 보고서를 냈다 |
+| `partial` | 검토 대기로 멈췄거나, 일부 관점이 평가 보류(`partial`)인 채 보고서를 냈다 |
 | `failed` | Assessment 중 failed, 미해결 인용 오류, 병합 오류 |
 
 ### 모델 설정
 
-`config/settings.yaml` 의 `llm.model` 이 기본값이고 `.env` 의 `LLM_MODEL` 이 우선한다.
+`config/settings.yaml` 의 `llm.provider`·`llm.model` 이 기본값이고 `.env` 의
+`LLM_PROVIDER`·`LLM_MODEL` 이 우선한다. OpenAI 로 돌리려면 `LLM_PROVIDER=openai`,
+`LLM_MODEL=gpt-4.1-mini`, `OPENAI_API_KEY` 를 넣는다.
 실제로 적용된 `temperature`·`seed`·토큰 사용량은 `runs/<run_id>/run.json` 의 `llm` 에
 기록된다(설정 파일 값과 다를 수 있다 — 아래 재현성 절 참고).
 
-> ⚠️ `gpt-5.6-luna` 가 팀 계정에서 호출되는지, **`with_structured_output`(tool calling)을
-> 지원하는지** 먼저 확인할 것. 미지원이면 `synthesis` 의 구조화 출력이 무너진다.
-> 안 되면 `.env` 에 `LLM_MODEL=gpt-4.1-mini`.
+> ⚠️ 모델을 바꾸면 **`with_structured_output`(tool calling)을 지원하는지** 먼저 확인할 것.
+> 미지원이면 `stakeholder`·`synthesis` 의 구조화 출력이 무너진다.
+> 토큰 사용량은 제공자와 무관하게 `usage_metadata` 로 집계하며, 캐시 적중분은 0 으로 센다.
 
 ---
 
@@ -243,7 +247,7 @@ PDF 는 **검증을 통과했을 때만** 나온다(§8 — 무효 인용이 남
 
 ```bash
 uv sync
-uv run pytest -q          # 162 passed — API 키·원문(data/raw/) 없이 돈다
+uv run pytest -q          # API 키·원문(data/raw/) 없이 돈다
 ```
 
 LLM·웹 검색·임베딩 색인·원문 해시 대조를 fixture 로 막고 계약만 본다. 푸시와 PR 마다
@@ -251,14 +255,11 @@ GitHub Actions 가 같은 명령을 돌린다([.github/workflows/test.yml](.gith
 
 | 층 | 파일 | 보는 것 |
 |---|---|---|
-| 단위 | `test_r1_*` ~ `test_r5_*` | 역할별 노드·검색·인용 검증·검토·제출본 |
+| 단위 | `test_r1_*` ~ `test_r5_*` | 역할별 노드·검색·인용 검증·검토·제출본. R1 은 그래프 배선(`graph`)·실행 기록(`app`)·계약(`schema`), R2 는 표 분할·chunk_id·추출/벡터 캐시(토크나이저·임베딩 모델은 타지 않는다) |
 | 통합 | `test_integration_graph.py` | 실물 노드로 그래프를 끝까지 돌려 R1~R5 계약이 맞물리는지 (`stakeholder` 만 stub) |
 
-통합 테스트를 따로 둔 이유: 역할별 코드가 모두 main 에 들어오고 단위 테스트 82개가
-통과했는데도 **파이프라인은 한 번도 끝까지 돈 적이 없었다.** 각 테스트가 손으로 만든
-state 로 자기 함수만 불렀기 때문이다. 그중 검증 결과가 State 에 실리지 않아
-`final_check` 가 무효 인용을 못 보고 `completed` 로 끝나는 버그는 죽지 않고 조용히
-통과했다. 경위와 수정 단계는 [docs/fix-interface-plan.md](docs/fix-interface-plan.md).
+통합 테스트를 따로 둔 이유: 단위 테스트가 전부 통과했는데도 파이프라인은 한 번도 끝까지 돈 적이
+없었다 — [docs/history.md](docs/history.md#통합-13--파이프라인이-한-번도-끝까지-돈-적이-없었다).
 
 ---
 
@@ -273,10 +274,8 @@ state 로 자기 함수만 불렀기 때문이다. 그중 검증 결과가 State
 | **주장 문장** | ❌ 모델이 매 실행 다시 쓴다 |
 | **이해관계자 근거** | ❌ 매 실행 웹을 새로 검색한다 |
 
-측정값: 같은 코퍼스로 두 번 돌렸을 때 `maturity` 노드가 **인용 근거 5건이 완전히 같은데
-본문 유사도 0.258** 이었다. `langchain_openai` 가 `gpt-5.6-luna` 에 대해 `temperature` 를
-보내지 않고(추론형 모델로 취급) `seed` 도 무시되기 때문이다. 조사 기록은
-[docs/reproducibility-plan.md](docs/reproducibility-plan.md).
+인용 근거가 완전히 같아도 본문은 74% 달랐다(당시 `langchain_openai` 가 추론형 모델에 temperature 를 보내지 않았고 seed 도 무시됐다). 조사 기록은
+[docs/history.md](docs/history.md#재현성--조사했고-목표를-접었다).
 
 **클론한 사람이 같은 결과를 얻을 수 없다.** `data/raw/`(원문)와 `.cache/`(모델 응답
 캐시)가 Git 에서 제외되고, 웹 검색 결과는 애초에 매일 바뀐다. 검증이 목적이라면 재실행이

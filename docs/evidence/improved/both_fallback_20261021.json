@@ -1,0 +1,462 @@
+[
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 1
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 전",
+    "node": "domain",
+    "status": "completed",
+    "fallback": false,
+    "by_design": true,
+    "split": false,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "research",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "status": "completed",
+    "fallback": false,
+    "by_design": false,
+    "split": true,
+    "mixed": 0
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "maturity",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  },
+  {
+    "version": "개선 후",
+    "node": "domain",
+    "error": "GoogleRateLimitError: Error calling model 'gemini-3.8-flash' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Your project has exceeded its monthly spending cap. Pleas"
+  }
+]

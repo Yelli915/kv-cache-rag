@@ -37,13 +37,12 @@ from src.agents.synthesis import synthesis
 from src.output.pdf import publish
 from src.output.review import review
 from src.schema import Assessment
-from src.state import ReportState, run_dir
+from src.state import ASSESSMENT_NODES, ReportState, run_dir
 from src.tools.web_store import save_json, utcnow
 
-FANOUT = ["maturity", "market", "stakeholder", "domain_assessment"]
-# 합류 단계에서 모든 자료를 모은다(§6). 참고문헌을 실제 인용에서 역으로 만들려면
-# 기술 조사 단계의 근거도 레지스트리에 있어야 한다(§9).
-MERGED = ["research"] + FANOUT
+# 합류 단계에서 research 까지 다섯 Assessment 를 모은다(§6). 참고문헌을 실제 인용에서
+# 역으로 만들려면 기술 조사 단계의 근거도 레지스트리에 있어야 한다(§9).
+FANOUT = list(ASSESSMENT_NODES[1:])
 
 
 class MergeConflict(Exception):
@@ -135,7 +134,7 @@ def collect_evidence(state) -> dict:
     조용히 덮어쓰면 내용 검토가 엉뚱한 원문을 대조하게 된다.
     """
     sources, evidence, gaps, errors = {}, {}, [], []
-    for name in MERGED:
+    for name in ASSESSMENT_NODES:
         raw = state.get(name)
         if not raw:
             errors.append(f"{name}: Assessment 가 없다")
@@ -152,7 +151,6 @@ def collect_evidence(state) -> dict:
         gaps.extend(assessment["gaps"])
 
     if errors:
-        save_json(run_dir(state) / "merge-errors.json", {"errors": errors})
         raise MergeConflict("; ".join(errors))
 
     return {"source_registry": sources, "evidence_registry": evidence, "gaps": gaps,
@@ -162,7 +160,7 @@ def collect_evidence(state) -> dict:
 
 def final_check(state) -> dict:
     """인용 오류와 사람의 내용 검토 완료 여부를 함께 확인하고 run_status 를 판정한다(부록 A)."""
-    statuses = {state.get(name, {}).get("status") for name in MERGED}
+    statuses = {state.get(name, {}).get("status") for name in ASSESSMENT_NODES}
     errors = (state.get("validation") or {}).get("errors")
     if "failed" in statuses or errors:
         status = "failed"          # 구조 오류나 미해결 인용 오류가 남은 경우(§7)
@@ -194,22 +192,12 @@ def save_draft(state) -> dict:
 
 
 def fail(state) -> dict:
-    """미해결 오류. 오류와 로그를 저장하고 제출용 출력을 막는다(§8).
+    """미해결 오류. 오류를 trace 에 남기고 제출용 출력을 막는다(§8).
 
     `report` 를 쓰지 않는다 — 실패한 실행이 보고서 자리를 차지하면 안 된다.
     """
     validation = state.get("validation") or {}
-    save_json(run_dir(state) / "validation-errors.json", validation)
     return {"trace": [event("fail", "failed", errors=validation.get("errors", []))]}
-
-
-def _pending(name, owner):
-    """아직 새 계약으로 이행하지 않은 노드 자리. 실행하면 담당과 이유를 말하고 멈춘다."""
-    def node(state):
-        raise NotImplementedError(
-            f"{name} 는 {owner} 가 schema.Assessment 계약으로 이행해야 한다. "
-            f"build_graph({name}=...) 로 mock 을 주입해 실행한다")
-    return node
 
 
 DEFAULT_NODES = {

@@ -8,24 +8,18 @@ R4 의 Assessment → R1 의 병합 → R5 의 종합·검토·보고서·제출
 `scripts/r3_smoke.py` 가 따로 검증한다.
 """
 
+import hashlib
 import json
 
 import pytest
 
-from src.agents import domain, market, maturity, research
+from src.agents import common, domain, market, maturity, research
 from src.graph import build_graph, invoke
 from src.output import pdf
-from src.schema import Assessment
+from src.state import ASSESSMENT_NODES
+from src.schema import Assessment, Synthesis
+from tests.helpers import PAPERS, FakeLLM, fill_review, search
 
-# 노드별 허용 컬렉션이 다르다(§3). 시장 근거를 papers_core 에서 주면 검증이 막는다.
-PAPERS = [
-    {"chunk_id": "aaaaaaaaaaaa", "source_id": "turboquant-paper", "collection": "papers_core",
-     "page": 3, "text": "TurboQuant reports 3.5-bit KV cache quantization.",
-     "applies_to": ["TurboQuant"], "scope": "direct", "cosine_score": 0.7},
-    {"chunk_id": "bbbbbbbbbbbb", "source_id": "itme-paper", "collection": "papers_core",
-     "page": 7, "text": "ITME reports 1.80x throughput over an NVMe-oF baseline.",
-     "applies_to": ["ITME"], "scope": "direct", "cosine_score": 0.6},
-]
 ECOSYSTEM = [
     {"chunk_id": "cccccccccccc", "source_id": "cxl-report", "collection": "ecosystem",
      "page": 2, "text": "CXL memory modules shipped by multiple vendors.",
@@ -34,27 +28,16 @@ ECOSYSTEM = [
      "page": 4, "text": "Serving frameworks announce KV cache quantization support.",
      "applies_to": ["TurboQuant"], "scope": "ecosystem", "cosine_score": 0.5},
 ]
-CHUNKS = PAPERS + ECOSYSTEM
 
-PAPERS_TEXT = (
-    "## TurboQuant\nTurboQuant 는 3.5비트 양자화를 보고한다 [aaaaaaaaaaaa].\n\n"
-    "## ITME\nITME 는 NVMe-oF 대비 1.80배 처리량을 보고한다 [bbbbbbbbbbbb].\n\n"
-    "근거 공백: 결합 실측 자료 없음"
-)
-MARKET_TEXT = (
-    "## ① 시장 규모/성장성\n정량 리포트 미확인 [dddddddddddd].\n\n"
-    "## ② 상용화/채택 현황\n발표 단계, 배포 확인 미확인 [cccccccccccc].\n\n"
-    "## ③ 생태계 지지\n일반 CXL 근거이며 추론 특화 여부 미확인 [cccccccccccc].\n\n"
-    "근거 공백: TurboQuant 운영 배포 사례 미확인"
-)
-
-
-class FakeSearch:
-    def __init__(self, chunks):
-        self.chunks = chunks
-
-    def invoke(self, payload):
-        return self.chunks
+PAPERS_DRAFT = {
+    "turboquant": "TurboQuant 는 3.5비트 양자화를 보고한다 [aaaaaaaaaaaa].",
+    "itme": "ITME 는 NVMe-oF 대비 1.80배 처리량을 보고한다 [bbbbbbbbbbbb].",
+    "gaps": [{"technology": "both", "item": "결합 실측 자료 없음"}],
+}
+MARKET_DRAFT = {"size": "정량 리포트 미확인 [dddddddddddd].",
+                "adoption": "발표 단계, 배포 확인 미확인 [cccccccccccc].",
+                "ecosystem": "일반 CXL 근거이며 추론 특화 여부 미확인 [cccccccccccc].",
+                "gaps": [{"technology": "TurboQuant", "item": "운영 배포 사례 미확인"}]}
 
 
 def stakeholder_stub(state):
@@ -80,40 +63,36 @@ def stakeholder_stub(state):
     }
 
 
-class FakeSynthesis:
-    """synthesis 의 구조화 출력 LLM 자리."""
-
-    def with_structured_output(self, schema):
-        return self
-
-    def invoke(self, prompt):
-        from src.schema import Synthesis
-        return Synthesis(
-            agreements=["두 기술 모두 KV cache 메모리 병목을 완화한다."],
-            conflicts=[{"perspective": "TRL", "why": "실증 환경의 범위가 다르다"}],
-            gaps=["두 기술의 결합 실측 자료 미확인"],
-            combination_hypothesis="개별 근거에서 도출한 추론이며 실측 결과가 아니다.",
-        )
+SYNTHESIS = Synthesis(
+    agreements=["두 기술 모두 KV cache 메모리 병목을 완화한다."],
+    conflicts=[{"perspective": "TRL", "why": "실증 환경의 범위가 다르다"}],
+    gaps=["두 기술의 결합 실측 자료 미확인"],
+    combination_hypothesis="개별 근거에서 도출한 추론이며 실측 결과가 아니다.",
+)
 
 
 @pytest.fixture
 def wired(monkeypatch, tmp_path):
-    for module, chunks, text in ((research, PAPERS, PAPERS_TEXT),
-                                 (maturity, PAPERS, PAPERS_TEXT),
-                                 (domain, PAPERS, PAPERS_TEXT),
-                                 (market, ECOSYSTEM, MARKET_TEXT)):
+    for module, chunks in ((research, PAPERS), (maturity, PAPERS), (domain, PAPERS),
+                           (market, ECOSYSTEM)):
         monkeypatch.setattr(module, "bind_document_search",
-                            lambda *a, _chunks=chunks, **k: FakeSearch(_chunks))
-        monkeypatch.setattr(module, "run_node", lambda *a, _text=text, **k: _text)
+                            lambda *a, _chunks=chunks, **k: search(_chunks))
+    monkeypatch.setattr(common, "draft", lambda *a, schema=common.Draft, **k: schema.model_validate(
+        MARKET_DRAFT if schema is market.MarketDraft else PAPERS_DRAFT))
 
     from src.agents import report as report_module
     from src.agents import synthesis as synthesis_module
 
-    monkeypatch.setattr(synthesis_module, "get_llm", lambda: FakeSynthesis())
+    monkeypatch.setattr(synthesis_module, "get_llm", lambda: FakeLLM(SYNTHESIS))
     monkeypatch.setattr(report_module, "model_name", lambda: "test-model")
     monkeypatch.setattr("src.rag.index.build", lambda: {"manifest": [{"id": "turboquant-paper"}]})
-    # 원문(data/raw/)은 저작권 문제로 커밋하지 않는다. 해시 대조 자체는 test_r1_graph 가 따로 본다.
-    monkeypatch.setattr("src.graph.verify_corpus", lambda manifest: [])
+    # 원문(data/raw/)은 저작권 문제로 커밋하지 않는다. 대신 tmp 원문과 해시가 맞는 매니페스트를
+    # 넣어 setup → verify_corpus 연결을 실물로 탄다.
+    raw = tmp_path / "raw.txt"
+    raw.write_bytes(b"fixture source")
+    manifest = {"sources": [{"id": "turboquant-paper", "local_path": str(raw),
+                             "sha256": hashlib.sha256(raw.read_bytes()).hexdigest()}]}
+    monkeypatch.setattr("src.rag.index.load_manifest", lambda: manifest)
     monkeypatch.setattr(pdf, "render_pdf",
                         lambda md, out: (out.parent.mkdir(parents=True, exist_ok=True),
                                          out.write_bytes(b"%PDF fixture")))
@@ -130,6 +109,13 @@ def wired(monkeypatch, tmp_path):
     return run
 
 
+def test_setup_stops_on_corpus_hash_mismatch(wired, tmp_path):
+    """원문이 매니페스트와 다르면 setup 에서 실행이 멈춘다(§3)."""
+    (tmp_path / "raw.txt").write_bytes(b"changed source")
+    with pytest.raises(ValueError, match="매니페스트와 다르다"):
+        wired()
+
+
 def test_pipeline_stops_for_human_review(wired):
     """첫 실행은 검토 대기다. §8 — ID 대조만으로 자동 통과시키지 않는다."""
     final, directory = wired()
@@ -144,7 +130,7 @@ def test_pipeline_stops_for_human_review(wired):
 def test_every_assessment_merges_into_the_registries(wired):
     final, _ = wired()
 
-    for node in ("research", "maturity", "market", "stakeholder", "domain_assessment"):
+    for node in ASSESSMENT_NODES:
         Assessment.model_validate(final[node])
 
     # 합류 단계가 다섯 Assessment 의 출처를 모두 모은다 (§6·§9)
@@ -175,19 +161,8 @@ def test_resume_after_review_produces_the_submission(wired, tmp_path):
     평가 보류 항목이 남아 있으므로 run_status 는 partial 이다. §7 — 부분 결과는 일부
     항목을 평가 보류로 남겼으나 포함된 주장의 검증은 통과한 경우다. 보고서는 낸다.
     """
-    import csv
-
     _, directory = wired()
-
-    path = directory / "review.csv"
-    rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))
-    for row in rows:
-        row["review_result"] = "확인"
-        row["reviewer"] = "권예리"
-    with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    fill_review(directory / "review.csv", "확인")
 
     draft = json.loads((directory / "draft.json").read_text(encoding="utf-8"))
     final, _ = wired(state=draft | {"trace": []}, start="review")
@@ -197,23 +172,13 @@ def test_resume_after_review_produces_the_submission(wired, tmp_path):
     assert "## REFERENCE" in final["report"]
     assert final["report_paths"][0].endswith("report.md")
     assert (directory / "final").is_dir()
-    assert json.loads((directory / "submission.json").read_text())["generated"] is True
+    assert final["report_paths"][-1].endswith(".pdf")
 
 
 def test_rejected_claim_never_reaches_the_report(wired, tmp_path):
     """§8 — 부결된 주장은 사실 서술에서 제외한다."""
-    import csv
-
     _, directory = wired()
-    path = directory / "review.csv"
-    rows = list(csv.DictReader(path.open(encoding="utf-8-sig")))
-    for row in rows:
-        row["review_result"] = "부결" if row["node"] == "market" else "확인"
-        row["reviewer"] = "권예리"
-    with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    fill_review(directory / "review.csv", lambda row: "부결" if row["node"] == "market" else "확인")
 
     draft = json.loads((directory / "draft.json").read_text(encoding="utf-8"))
     final, _ = wired(state=draft | {"trace": []}, start="review")
