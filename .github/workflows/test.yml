@@ -1,8 +1,7 @@
 name: tests
 
 on:
-  push:
-    branches: [main]
+  push:              # 모든 브랜치. 작업 브랜치도 PR 전에 결과를 본다
   pull_request:
   workflow_dispatch:
 

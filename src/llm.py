@@ -12,35 +12,50 @@ langchain 이 temperature 를 아예 보내지 않고 seed 도 대개 무시한�
 """
 
 import os
+import sqlite3
+import threading
 from pathlib import Path
 
 from langchain.chat_models import init_chat_model
 from langchain_core.globals import set_llm_cache
+from langchain_core.load import dumps, loads
+from langchain_core.messages import AIMessage
+from langchain_core.outputs import ChatGeneration, Generation
 
 from src.settings import settings
 
 CACHE_PATH = ".cache/llm.sqlite"
+# 캐시 파일에서 되살릴 수 있는 클래스. 그 밖의 것은 loads 가 거부한다.
+_CACHED_TYPES = [ChatGeneration, Generation, AIMessage]
 
 _cache = None
 _effective: dict = {}
 
 
 class _CountingCache:
-    """적중·미적중을 세는 SQLite 캐시. langchain 캐시 인터페이스는 lookup/update 둘뿐이다."""
+    """적중·미적중을 세는 SQLite 캐시. langchain 캐시 인터페이스는 lookup/update 둘뿐이다.
+
+    표 구조는 langchain_community SQLiteCache 와 같다 — 기존 .cache/llm.sqlite 가 그대로 적중한다.
+    """
 
     def __init__(self, database_path: str):
-        from langchain_community.cache import SQLiteCache
-
-        self._inner = SQLiteCache(database_path=database_path)
+        self._db = sqlite3.connect(database_path, check_same_thread=False)
+        self._lock = threading.Lock()   # fan-out 노드가 스레드로 같은 연결을 쓴다
+        self._db.execute("CREATE TABLE IF NOT EXISTS full_llm_cache (prompt VARCHAR NOT NULL, "
+                         "llm VARCHAR NOT NULL, idx INTEGER NOT NULL, response VARCHAR, "
+                         "PRIMARY KEY (prompt, llm, idx))")
         self.hits = 0
         self.misses = 0
 
     def lookup(self, prompt: str, llm_string: str):
-        found = self._inner.lookup(prompt, llm_string)
-        if found is None:
+        with self._lock:
+            rows = self._db.execute("SELECT response FROM full_llm_cache WHERE prompt = ? AND llm = ? "
+                                    "ORDER BY idx", (prompt, llm_string)).fetchall()
+        if not rows:
             self.misses += 1
             return None
         self.hits += 1
+        found = [loads(r[0], allowed_objects=_CACHED_TYPES) for r in rows]
         # 저장된 응답은 원래 호출의 토큰 수를 들고 있다. 그대로 두면 사용량 콜백이
         # 재사용분을 이번 실행의 비용으로 센다 — 적중은 호출이 없었으므로 0 이다.
         for gen in found:
@@ -51,7 +66,9 @@ class _CountingCache:
         return found
 
     def update(self, prompt: str, llm_string: str, return_val) -> None:
-        self._inner.update(prompt, llm_string, return_val)
+        with self._lock, self._db:
+            self._db.executemany("INSERT OR REPLACE INTO full_llm_cache VALUES (?, ?, ?, ?)",
+                                 [(prompt, llm_string, i, dumps(g)) for i, g in enumerate(return_val)])
 
 
 def enable_cache(path: str = CACHE_PATH):

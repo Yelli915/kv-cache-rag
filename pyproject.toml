@@ -8,12 +8,10 @@ dependencies = [
     "langgraph>=1.0.1",
     "langchain>=1.0.2",
     "langchain-openai>=1.0.1",
-    "langchain-community>=0.3.31",
     "langchain-huggingface>=0.3",   # multilingual-e5-small
     "langchain-tavily>=0.2.12",     # 시장/이해관계자 웹 조사
     "sentence-transformers>=5.1.1",
     "faiss-cpu>=1.12.0",
-    "rank-bm25>=0.2.2",             # eval/retrieval_metrics.py 의 BM25·RRF 비교 (운영 검색은 dense)
     "pdfplumber>=0.11.8",           # 페이지 메타데이터 + 표 추출
     "requests>=2.32",               # scripts/prepare_sources.py
     "pypdf>=5.1",                   # 매니페스트 페이지 수
@@ -24,6 +22,7 @@ dependencies = [
     "torch>=2.4",                # sentence-transformers 가 끌고 온다. Linux 는 CPU 휠로 고정(아래)
     "python-dotenv>=1.2.1",
     "langchain-google-genai>=4.4.2",
+    "langchain-text-splitters>=1.1.2",  # src/rag/chunk.py 토큰 기준 청킹
 ]
 
 [project.optional-dependencies]
@@ -47,4 +46,5 @@ explicit = true
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "rank-bm25>=0.2.2",   # eval/retrieval_metrics.py 의 BM25·RRF 비교 (운영 검색은 dense)
 ]

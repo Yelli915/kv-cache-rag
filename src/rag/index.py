@@ -12,9 +12,9 @@ import inspect
 import json
 from pathlib import Path
 
+import faiss
 import numpy as np
 import pdfplumber
-from langchain_community.vectorstores import FAISS
 
 from src.rag import chunk as chunker
 from src.rag.embed import EMBED_REVISION, get_embeddings
@@ -95,7 +95,26 @@ def _pages(entry: dict) -> list[tuple[int, str, list]]:
     return [(1, Path(entry["text_path"]).read_text(encoding="utf-8"), [])]
 
 
-def _faiss(docs, embeddings) -> FAISS:
+class DenseStore:
+    """정규화 벡터의 내적(=코사인) FAISS 인덱스 + 청크. retrieve.search 가 쓰는 만큼만 갖는다."""
+
+    def __init__(self, docs, vectors, embeddings):
+        self.docs, self.embeddings = list(docs), embeddings
+        self.index = faiss.IndexFlatIP(vectors.shape[1])
+        self.index.add(vectors)
+
+    def similarity_search_with_score_by_vector(self, vector, k):
+        scores, ids = self.index.search(np.asarray([vector], dtype=np.float32), k)
+        return [(self.docs[i], float(s)) for i, s in zip(ids[0], scores[0]) if i >= 0]
+
+
+def dense_store(docs, embeddings) -> DenseStore:
+    """캐시 없이 바로 만든다 — 테스트·스모크용."""
+    vectors = np.asarray(embeddings.embed_documents([d.page_content for d in docs]), dtype=np.float32)
+    return DenseStore(docs, vectors, embeddings)
+
+
+def _faiss(docs, embeddings) -> DenseStore:
     """청크 임베딩을 캐시해 FAISS 를 만든다(실측 약 7초 절약).
 
     키는 청크 ID 목록 + 임베딩 revision 이다. chunk_id 가 본문 해시라 본문이 한 글자라도
@@ -111,8 +130,7 @@ def _faiss(docs, embeddings) -> FAISS:
         vectors = np.asarray(embeddings.embed_documents(texts), dtype=np.float32)
         path.parent.mkdir(parents=True, exist_ok=True)
         np.save(path, vectors, allow_pickle=False)
-    return FAISS.from_embeddings(list(zip(texts, vectors.tolist())), embeddings,
-                                 metadatas=[d.metadata for d in docs])
+    return DenseStore(docs, vectors, embeddings)
 
 
 def build() -> dict:

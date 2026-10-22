@@ -8,7 +8,6 @@ mock 노드는 tests/mock_nodes.py 와 같은 것을 쓴다 — 테스트와 증
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
 

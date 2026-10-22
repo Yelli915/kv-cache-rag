@@ -1,7 +1,7 @@
 import pytest
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
-from langchain_community.vectorstores import FAISS
+from src.rag.index import dense_store
 from src.rag import retrieve
 from src.tools import docs
 
@@ -22,7 +22,7 @@ def document(i, tech='ITME', collection='papers_core', **extra):
 
 
 def install(monkeypatch, documents, collection='papers_core'):
-    store = FAISS.from_documents(documents, TinyEmbeddings())
+    store = dense_store(documents, TinyEmbeddings())
     data = {'stores': {collection: {'dense': store}},
             'chunks': {d.metadata['chunk_id']: d for d in documents}}
     monkeypatch.setattr(retrieve, 'build', lambda: data)

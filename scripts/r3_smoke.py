@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
-from langchain_community.vectorstores import FAISS
+from src.rag.index import dense_store
 from src.rag import retrieve
 from src.tools.docs import bind_document_search
 from src.tools.web_fetch import FetchedPage
@@ -45,7 +45,7 @@ def run(root):
         'chunk_id': '0123456789ab', 'source': 'fixture-paper', 'collection': 'papers_core',
         'applies_to': ['ITME'], 'perspectives': ['research', 'maturity', 'domain'],
         'scope': 'direct', 'page': 1})
-    index = {'stores': {'papers_core': {'dense': FAISS.from_documents([doc], FixtureEmbeddings())}},
+    index = {'stores': {'papers_core': {'dense': dense_store([doc], FixtureEmbeddings())}},
              'chunks': {'0123456789ab': doc}}
     with patch.object(retrieve, 'build', return_value=index):
         hits = bind_document_search('research').invoke({'query': 'ITME', 'technology': 'ITME'})
